@@ -486,7 +486,8 @@ export default function App() {
 
   // --- 모달 상태 ---
   const [maximizedView, setMaximizedView] = useState(null); 
-  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  // 기본 정렬 기준을 '상품명(product)' 오름차순('asc')으로 변경
+  const [sortConfig, setSortConfig] = useState({ key: 'product', direction: 'asc' });
   const [searchProduct, setSearchProduct] = useState('');
   const [searchOption, setSearchOption] = useState('');
   
