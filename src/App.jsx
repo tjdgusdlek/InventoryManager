@@ -320,7 +320,17 @@ export default function App() {
 
   const saveInvEdit = async () => {
     if (!invEditForm.product || !invEditForm.option || invEditForm.qty < 0) return alert("입력값을 확인해주세요.");
-    const updatedInv = { ...invEditForm, qty: Number(invEditForm.qty), originPrice: Number(invEditForm.originPrice), sellPrice: Number(invEditForm.sellPrice) };
+    
+    // DB 저장 시 에러를 막기 위해 임시 계산 필드(soldQty, remainQty)를 쏙 빼고 순수 데이터(pureData)만 남깁니다.
+    const { soldQty, remainQty, ...pureData } = invEditForm;
+    
+    // 순수 데이터에 숫자로 변환된 값들을 덮어씌웁니다.
+    const updatedInv = { 
+      ...pureData, 
+      qty: Number(invEditForm.qty), 
+      originPrice: Number(invEditForm.originPrice) || 0, 
+      sellPrice: Number(invEditForm.sellPrice) || 0 
+    };
     
     if (supabase) {
       const { error } = await supabase.from('inventory').update(updatedInv).eq('id', updatedInv.id);
