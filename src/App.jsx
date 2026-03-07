@@ -735,7 +735,7 @@ export default function App() {
                 </span>
               </div>
               
-              <div className="grid grid-cols-5 divide-x border-b border-gray-100 text-center bg-white shrink-0">
+              <div className="grid grid-cols-5 divide-x divide-gray-200 border-b border-gray-100 text-center bg-white shrink-0">
                 <div className="p-3 md:p-4">
                   <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">오늘 총 판매 수량</div>
                   <div className="font-bold text-emerald-600 text-base lg:text-lg">{todayTotalQty}개</div>
