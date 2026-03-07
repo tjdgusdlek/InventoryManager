@@ -4,11 +4,11 @@ import { Plus, Calendar, Package, TrendingUp, Archive, PieChart, Trash2, Carrot,
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
 
-// .env 파일과 Vercel 환경 변수에 설정된 값을 불러옵니다.
+// Vercel 환경 변수 불러오기
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// 환경 변수가 제대로 불러와졌을 때만 클라이언트를 생성하도록 안전장치를 추가합니다.
+// 환경 변수가 제대로 불러와졌을 때만 클라이언트를 생성합니다.
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 // --- 공휴일 자동화 설정 ---
@@ -175,17 +175,73 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
 };
 
 export default function App() {
-  // --- PIN 번호 인증 상태 추가 ---
+  // --- PIN 번호 인증 상태 (4자리 네모 박스) ---
   const [isAuthorized, setIsAuthorized] = useState(false);
-  // --- PIN 번호 상태 (배열로 관리) ---
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const pinRefs = useRef([]);
-  const CORRECT_PIN = import.meta.env.VITE_ADMIN_PIN; // .env에서 PIN 가져오기
+  const CORRECT_PIN = import.meta.env.VITE_ADMIN_PIN;
 
+  // --- 메인 데이터 상태 ---
+  const [isDbConnected, setIsDbConnected] = useState(!!supabase);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const [sales, setSales] = useState([]); 
+  const [inventoryData, setInventoryData] = useState([]); 
+  const [optionMappings, setOptionMappings] = useState([]); 
+  
+  const [pendingRawData, setPendingRawData] = useState([]); 
+  const [invTab, setInvTab] = useState('stock'); 
+
+  // --- 폼 상태 ---
+  const [addMode, setAddMode] = useState('manual'); 
+  const [manualAddForm, setManualAddForm] = useState({ product: '', option: '', qty: 1, sellPrice: 0 });
+
+  // --- 정산 현황 데이터 상태 (DB 연동) ---
+  const [summaryTab, setSummaryTab] = useState('sales'); 
+  const [settlementData, setSettlementData] = useState({ intermediate: 0, account: 0, cash: 0 });
+  const [isSettlementSaving, setIsSettlementSaving] = useState(false);
+
+  // --- Supabase 초기 데이터 페칭 ---
+  useEffect(() => {
+    if (!supabase || !isAuthorized) return; 
+
+    const fetchAllData = async () => {
+      setIsLoading(true);
+      try {
+        const { data: invData, error: invErr } = await supabase.from('inventory').select('*').order('id', { ascending: true });
+        if (!invErr && invData) setInventoryData(invData);
+
+        const { data: salesData, error: salesErr } = await supabase.from('sales').select('*').order('date', { ascending: false });
+        if (!salesErr && salesData) setSales(salesData);
+
+        const { data: mapData, error: mapErr } = await supabase.from('option_mappings').select('*');
+        if (!mapErr && mapData) setOptionMappings(mapData);
+
+        // 정산 현황 데이터 불러오기 (id: 1 고정)
+        const { data: settleData, error: settleErr } = await supabase.from('settlement').select('*').eq('id', 1).maybeSingle();
+        if (!settleErr && settleData) {
+           setSettlementData({
+             intermediate: settleData.intermediate || 0,
+             account: settleData.account || 0,
+             cash: settleData.cash || 0
+           });
+        }
+        
+      } catch (error) {
+        console.error("DB Fetch Error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAllData();
+  }, [isAuthorized]);
+
+  // --- PIN 4자리 입력 핸들러 ---
   const handlePinChange = (index, value) => {
-    if (!/^\d*$/.test(value)) return; // 숫자만 허용
+    if (!/^\d*$/.test(value)) return; 
     const newDigits = [...pinDigits];
-    newDigits[index] = value.slice(-1); // 마지막 글자만 취함
+    newDigits[index] = value.slice(-1); 
     setPinDigits(newDigits);
 
     // 다음 칸으로 자동 포커스 이동
@@ -217,47 +273,12 @@ export default function App() {
       setIsAuthorized(true);
     } else {
       alert("PIN 번호가 일치하지 않습니다.");
-      setPinDigits(['', '', '', '']); // 초기화
+      setPinDigits(['', '', '', '']); 
       if (pinRefs.current[0]) pinRefs.current[0].focus();
     }
   };
 
-  // --- Supabase 초기 데이터 페칭 ---
-  useEffect(() => {
-    if (!supabase) return;
-
-    const fetchAllData = async () => {
-      setIsLoading(true);
-      try {
-        const { data: invData, error: invErr } = await supabase.from('inventory').select('*').order('id', { ascending: true });
-        if (!invErr && invData) setInventoryData(invData);
-
-        const { data: salesData, error: salesErr } = await supabase.from('sales').select('*').order('date', { ascending: false });
-        if (!salesErr && salesData) setSales(salesData);
-
-        const { data: mapData, error: mapErr } = await supabase.from('option_mappings').select('*');
-        if (!mapErr && mapData) setOptionMappings(mapData);
-
-        // 정산 현황 데이터 불러오기 (단일 행 id: 1 기준)
-        const { data: settleData, error: settleErr } = await supabase.from('settlement').select('*').eq('id', 1).maybeSingle();
-        if (!settleErr && settleData) {
-           setSettlementData({
-             intermediate: settleData.intermediate || 0,
-             account: settleData.account || 0,
-             cash: settleData.cash || 0
-           });
-        }
-        
-      } catch (error) {
-        console.error("DB Fetch Error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchAllData();
-  }, []);
-
+  // --- 날짜 설정 ---
   const getLocalToday = () => {
     const d = new Date();
     const year = d.getFullYear();
@@ -269,7 +290,6 @@ export default function App() {
 
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
-  
   const [formData, setFormData] = useState({ date: today, product: '', option: '', quantity: 1, price: 0, note: '' });
 
   const uniqueProducts = useMemo(() => [...new Set(inventoryData.map(item => item.product))], [inventoryData]);
@@ -293,13 +313,12 @@ export default function App() {
     }
   };
 
-  // --- Supabase 지원 CRUD 핸들러 ---
+  // --- 데이터 CRUD 핸들러 ---
   const handleAddSale = async (e) => {
     e.preventDefault();
     if (!formData.product || !formData.option || formData.quantity <= 0) return alert("상품, 옵션, 올바른 수량을 입력해주세요.");
 
     const newSale = {
-      // Date.now() 만 쓰면 겹칠 수 있으므로, 확실하게 정수 형태의 랜덤값을 더해줍니다.
       id: Date.now() + Math.floor(Math.random() * 10000), 
       date: formData.date,
       product: formData.product,
@@ -340,19 +359,12 @@ export default function App() {
     cancelEdit();
   };
 
+  // 수동 재고 수정 (400 에러 해결됨: 계산 필드 제거 로직 추가)
   const saveInvEdit = async () => {
     if (!invEditForm.product || !invEditForm.option || invEditForm.qty < 0) return alert("입력값을 확인해주세요.");
     
-    // DB 저장 시 에러를 막기 위해 임시 계산 필드(soldQty, remainQty)를 쏙 빼고 순수 데이터(pureData)만 남깁니다.
     const { soldQty, remainQty, ...pureData } = invEditForm;
-    
-    // 순수 데이터에 숫자로 변환된 값들을 덮어씌웁니다.
-    const updatedInv = { 
-      ...pureData, 
-      qty: Number(invEditForm.qty), 
-      originPrice: Number(invEditForm.originPrice) || 0, 
-      sellPrice: Number(invEditForm.sellPrice) || 0 
-    };
+    const updatedInv = { ...pureData, qty: Number(invEditForm.qty), originPrice: Number(invEditForm.originPrice) || 0, sellPrice: Number(invEditForm.sellPrice) || 0 };
     
     if (supabase) {
       const { error } = await supabase.from('inventory').update(updatedInv).eq('id', updatedInv.id);
@@ -373,8 +385,69 @@ export default function App() {
     }
   };
 
+  const handleAddManualInv = async (e) => {
+    e.preventDefault();
+    if (!manualAddForm.product || !manualAddForm.option || manualAddForm.qty <= 0) return alert("상품명, 옵션명, 올바른 수량을 입력해주세요.");
+
+    const newItem = {
+      id: Date.now() + Math.floor(Math.random() * 10000), 
+      product: manualAddForm.product,
+      option: manualAddForm.option,
+      qty: Number(manualAddForm.qty),
+      originPrice: 0,
+      sellPrice: Number(manualAddForm.sellPrice) || 0
+    };
+
+    let newInv = [...inventoryData];
+    const existingIdx = newInv.findIndex(i => i.product === newItem.product && i.option === newItem.option);
+    
+    let dbItemToSave;
+
+    if (existingIdx >= 0) {
+      newInv[existingIdx] = {
+        ...newInv[existingIdx],
+        qty: newInv[existingIdx].qty + newItem.qty,
+        sellPrice: newItem.sellPrice
+      };
+      const { soldQty, remainQty, ...pureData } = newInv[existingIdx];
+      dbItemToSave = pureData;
+    } else {
+      newInv.push(newItem);
+      dbItemToSave = newItem;
+    }
+
+    if (supabase) {
+       const { error } = await supabase.from('inventory').upsert([dbItemToSave]);
+       if (error) { console.error(error); return alert("DB 저장 중 오류가 발생했습니다."); }
+    }
+
+    setInventoryData(newInv);
+    setManualAddForm({ product: '', option: '', qty: 1, sellPrice: 0 });
+    alert("재고가 성공적으로 추가되었습니다!");
+  };
+
+  // 정산 현황 DB 저장 로직
+  const handleSaveSettlement = async () => {
+    setIsSettlementSaving(true);
+    if (supabase) {
+      const { error } = await supabase.from('settlement').upsert([{
+        id: 1, 
+        intermediate: settlementData.intermediate,
+        account: settlementData.account,
+        cash: settlementData.cash
+      }]);
+      if (error) {
+        console.error("정산 현황 저장 오류:", error);
+        alert("DB 저장에 실패했습니다.");
+      } else {
+        alert("정산 데이터가 DB에 안전하게 저장되었습니다!");
+      }
+    }
+    setIsSettlementSaving(false);
+  };
+
+  // 일괄 텍스트 매칭 및 DB 업데이트 (500 에러 방지용 사전 합산 로직 적용)
   const applyPendingData = async () => {
-    // 1. 모든 항목이 매칭되었는지 확인
     for (const item of pendingRawData) {
       if (!item.mapTo.product || !item.mapTo.option) return alert(`[${item.rawId}] 항목의 매칭을 완료해주세요.`);
     }
@@ -382,28 +455,8 @@ export default function App() {
     let newInv = [...inventoryData];
     let newMappings = [...optionMappings];
 
-    // 2. pendingRawData 안에서 동일한 (product, option) 조합을 가진 항목들의 수량을 합칩니다.
-    // 이렇게 해야 DB 저장 시 중복 충돌(ON CONFLICT 에러)이 발생하지 않습니다.
-    const consolidatedItems = {};
-    
-    for (const item of pendingRawData) {
-      const key = `${item.mapTo.product}_${item.mapTo.option}`;
-      if (!consolidatedItems[key]) {
-        consolidatedItems[key] = { ...item };
-      } else {
-        consolidatedItems[key].qty += item.qty; // 수량만 더해줍니다.
-      }
-    }
-
-    const uniquePendingData = Object.values(consolidatedItems);
-
     const dbMappingsToUpsert = [];
-    const dbInventoryToUpsert = [];
-
-    // 3. 중복이 제거된 uniquePendingData를 돌면서 DB 저장용 배열을 만듭니다.
-    for (const item of uniquePendingData) {
-      // 매칭 정보 업데이트
-      const existingMapIdx = newMappings.findIndex(m => m.rawId === item.rawId);
+    for (const item of pendingRawData) {
       const mapData = {
         rawId: item.rawId,
         rawName: item.rawName,
@@ -412,42 +465,65 @@ export default function App() {
         sellPrice: Number(item.mapTo.sellPrice) || 0
       };
       
+      const existingMapIdx = newMappings.findIndex(m => m.rawId === item.rawId);
       if (existingMapIdx >= 0) newMappings[existingMapIdx] = mapData;
       else newMappings.push(mapData);
       
-      // Mapping 테이블은 rawId가 고유키이므로 pendingRawData 원본을 기준으로 넣어도 중복 위험이 적지만,
-      // 혹시 모를 중복을 방지하기 위해 중복 검사 후 넣습니다.
       if(!dbMappingsToUpsert.find(m => m.rawId === mapData.rawId)) {
         dbMappingsToUpsert.push(mapData);
       }
+    }
 
-      // 재고 정보 업데이트
-      const invIdx = newInv.findIndex(i => i.product === mapData.product && i.option === mapData.option);
+    const inventoryAddMap = {};
+    for (const item of pendingRawData) {
+      const key = `${item.mapTo.product}__|__${item.mapTo.option}`;
+      if (!inventoryAddMap[key]) {
+        inventoryAddMap[key] = {
+          product: item.mapTo.product,
+          option: item.mapTo.option,
+          qty: item.qty,
+          sellPrice: Number(item.mapTo.sellPrice) || 0
+        };
+      } else {
+        inventoryAddMap[key].qty += item.qty;
+      }
+    }
+
+    const dbInventoryToUpsert = [];
+    const aggregatedInventory = Object.values(inventoryAddMap);
+
+    for (let i = 0; i < aggregatedInventory.length; i++) {
+      const aggItem = aggregatedInventory[i];
+      const invIdx = newInv.findIndex(inv => inv.product === aggItem.product && inv.option === aggItem.option);
       let dbItemToSave;
 
       if (invIdx >= 0) {
-         newInv[invIdx] = { ...newInv[invIdx], qty: newInv[invIdx].qty + item.qty, sellPrice: mapData.sellPrice };
+         newInv[invIdx] = { 
+           ...newInv[invIdx], 
+           qty: newInv[invIdx].qty + aggItem.qty, 
+           sellPrice: aggItem.sellPrice 
+         };
          const { soldQty, remainQty, ...pureData } = newInv[invIdx];
          dbItemToSave = pureData;
       } else {
          dbItemToSave = {
-           id: Date.now() + Math.floor(Math.random() * 10000),
-           product: mapData.product,
-           option: mapData.option,
-           qty: item.qty,
+           id: Date.now() + Math.floor(Math.random() * 10000) + i, 
+           product: aggItem.product,
+           option: aggItem.option,
+           qty: aggItem.qty,
            originPrice: 0,
-           sellPrice: mapData.sellPrice
+           sellPrice: aggItem.sellPrice
          };
          newInv.push(dbItemToSave);
       }
       dbInventoryToUpsert.push(dbItemToSave);
     }
 
-    // 4. DB 일괄 저장 (Upsert)
     if (supabase) {
       try {
         const { error: mapErr } = await supabase.from('option_mappings').upsert(dbMappingsToUpsert);
         if (mapErr) throw mapErr;
+        
         const { error: invErr } = await supabase.from('inventory').upsert(dbInventoryToUpsert);
         if (invErr) throw invErr;
       } catch(err) {
@@ -456,7 +532,6 @@ export default function App() {
       }
     }
 
-    // 5. 화면 상태 업데이트 및 초기화
     setOptionMappings(newMappings);
     setInventoryData(newInv);
     setPendingRawData([]);
@@ -506,12 +581,12 @@ export default function App() {
       return { ...item, soldQty, remainQty: item.qty - soldQty };
     });
     
-    // 기본 정렬: 1순위 상품명(가나다순), 2순위 옵션명(가나다순)
+    // 2차 정렬 적용: 1순위 상품명(가나다순), 2순위 옵션명(가나다순)
     return calculated.sort((a, b) => {
       if (a.product === b.product) {
-        return a.option.localeCompare(b.option); // 상품명이 같으면 옵션명으로 비교
+        return a.option.localeCompare(b.option);
       }
-      return a.product.localeCompare(b.product); // 상품명이 다르면 상품명으로 비교
+      return a.product.localeCompare(b.product);
     });
   }, [sales, inventoryData]);
 
@@ -553,8 +628,7 @@ export default function App() {
 
   // --- 모달 상태 ---
   const [maximizedView, setMaximizedView] = useState(null); 
-  // 기본 정렬 기준을 '상품명(product)' 오름차순('asc')으로 변경
-  const [sortConfig, setSortConfig] = useState({ key: 'product', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'product', direction: 'asc' }); 
   const [searchProduct, setSearchProduct] = useState('');
   const [searchOption, setSearchOption] = useState('');
   
@@ -568,81 +642,13 @@ export default function App() {
   const [editingMapId, setEditingMapId] = useState(null);
   const [mapEditForm, setMapEditForm] = useState(null);
 
-  const [showRawDataInput, setShowRawDataInput] = useState(false);
-  // --- 정산 현황 탭 상태 ---
-  const [summaryTab, setSummaryTab] = useState('sales'); 
-  const [settlementData, setSettlementData] = useState({ intermediate: 0, account: 0, cash: 0 });
-  const [isSettlementSaving, setIsSettlementSaving] = useState(false); // 저장 버튼 로딩 상태
-
-  // 정산 현황 DB 저장 로직
-  const handleSaveSettlement = async () => {
-    setIsSettlementSaving(true);
-    if (supabase) {
-      const { error } = await supabase.from('settlement').upsert([{
-        id: 1, // 정산 현황은 여러 개가 필요 없으므로 고정 ID(1)를 사용합니다.
-        intermediate: settlementData.intermediate,
-        account: settlementData.account,
-        cash: settlementData.cash
-      }]);
-      if (error) {
-        console.error("정산 현황 저장 오류:", error);
-        alert("DB 저장에 실패했습니다.");
-      } else {
-        alert("정산 데이터가 DB에 안전하게 저장되었습니다!");
-      }
-    }
-    setIsSettlementSaving(false);
-  };
-
-  const handleAddManualInv = async (e) => {
-    e.preventDefault();
-    if (!manualAddForm.product || !manualAddForm.option || manualAddForm.qty <= 0) return alert("상품명, 옵션명, 올바른 수량을 입력해주세요.");
-
-    const newItem = {
-      id: Date.now() + Math.floor(Math.random() * 10000),
-      product: manualAddForm.product,
-      option: manualAddForm.option,
-      qty: Number(manualAddForm.qty),
-      originPrice: 0,
-      sellPrice: Number(manualAddForm.sellPrice) || 0
-    };
-
-    let newInv = [...inventoryData];
-    const existingIdx = newInv.findIndex(i => i.product === newItem.product && i.option === newItem.option);
-    
-    let dbItemToSave;
-
-    if (existingIdx >= 0) {
-      // 기존 재고가 있으면 수량 합산 및 단가 갱신
-      newInv[existingIdx] = {
-        ...newInv[existingIdx],
-        qty: newInv[existingIdx].qty + newItem.qty,
-        sellPrice: newItem.sellPrice
-      };
-      // DB 저장용에서 계산 필드 제외
-      const { soldQty, remainQty, ...pureData } = newInv[existingIdx];
-      dbItemToSave = pureData;
-    } else {
-      // 새로운 재고 추가
-      newInv.push(newItem);
-      dbItemToSave = newItem;
-    }
-
-    if (supabase) {
-       const { error } = await supabase.from('inventory').upsert([dbItemToSave]);
-       if (error) { console.error(error); return alert("DB 저장 중 오류가 발생했습니다."); }
-    }
-
-    setInventoryData(newInv);
-    setManualAddForm({ product: '', option: '', qty: 1, sellPrice: 0 });
-    alert("재고가 성공적으로 추가되었습니다!");
-  };
+  const [showRawDataInput, setShowRawDataInput] = useState(false); 
 
   const handleCloseModal = () => {
     setMaximizedView(null);
     setSearchProduct('');
     setSearchOption('');
-    setSortConfig({ key: 'date', direction: 'desc' });
+    setSortConfig({ key: 'product', direction: 'asc' });
     setEditingSaleId(null);
     setEditForm(null);
     setEditingInvId(null);
@@ -705,7 +711,6 @@ export default function App() {
     });
 
     setPendingRawData(pending);
-    setShowRawDataInput(false); 
   };
 
   const updatePendingMap = (index, field, value) => {
@@ -783,7 +788,7 @@ export default function App() {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-bold">DB 데이터를 불러오는 중입니다...</div>;
   }
 
-  // --- PIN 인증 로그인 화면 ---
+  // --- PIN 인증 로그인 화면 (네모 박스 UI) ---
   if (!isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -792,7 +797,6 @@ export default function App() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">관리자 로그인</h2>
           <p className="text-sm text-gray-500 mb-8">시스템에 접근하려면 PIN 번호를 입력하세요.</p>
           
-          {/* 4개의 네모 박스 입력창 */}
           <div className="flex justify-center gap-3 mb-8">
             {[0, 1, 2, 3].map((index) => (
               <input
@@ -821,7 +825,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 p-4 md:p-8 font-sans">
       
-      {/* 글로벌 Datalist */}
       <datalist id="globalProductList">
         {uniqueProducts.map(p => <option key={p} value={p} />)}
       </datalist>
@@ -833,7 +836,7 @@ export default function App() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Carrot className="text-orange-500" />
-            당근 판매 & 재고 관리
+            당근 판매 & 재고 관리 표
           </h1>
           <div className="mt-2 flex items-center gap-2 text-xs font-semibold">
             {isDbConnected ? (
@@ -842,7 +845,7 @@ export default function App() {
               </span>
             ) : (
               <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-md border border-orange-200">
-                <AlertCircle size={12} /> 연결 확인 중...
+                <AlertCircle size={12} /> 데이터베이스 연결 오류
               </span>
             )}
           </div>
@@ -918,7 +921,7 @@ export default function App() {
 
           <div className="lg:col-span-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col">
-              {/* --- 👇 여기서부터 탭 UI 시작 --- */}
+              
               <div className="flex bg-gray-100 pt-2 px-3 gap-1 border-b border-gray-200 shrink-0">
                 <button
                   onClick={() => setSummaryTab('sales')}
@@ -934,7 +937,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* 탭 1: 기존 판매 요약 화면 */}
               {summaryTab === 'sales' && (
                 <>
                   <div className="grid grid-cols-5 divide-x divide-gray-200 border-b border-gray-100 text-center bg-white shrink-0">
@@ -1032,7 +1034,6 @@ export default function App() {
                     <button 
                       onClick={handleSaveSettlement} 
                       disabled={isSettlementSaving}
-                      /* 보라색(violet)을 무채색 탭과 잘 어울리는 세련된 다크 그레이(gray-800)로 변경 */
                       className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400 whitespace-nowrap break-keep"
                     >
                       <Database size={16} className="shrink-0 text-gray-300" /> 
@@ -1040,19 +1041,20 @@ export default function App() {
                     </button>
                   </div>
 
+                  {/* 자동 계산 영역 */}
                   {(() => {
                     const remitted = Number(settlementData.intermediate) || 0; // 대표님께 송금한 정산금
                     const inAccount = Number(settlementData.account) || 0;     // 내 계좌 잔액
                     const inCash = Number(settlementData.cash) || 0;           // 보유중인 현금
                     const totalSales = totalSalesSummary.totalAmount || 0;     // 누적 판매 금액 (자동 계산됨)
 
-                    // 1. 미정산금 (누적 판매 금액 - 대표님 송금액)
+                    // 1. 미정산금
                     const unsettledAmount = totalSales - remitted;
                     
-                    // 2. 현재 보유 자산 (내 계좌 잔액 + 보유중인 현금)
+                    // 2. 현재 보유 자산
                     const totalAsset = inAccount + inCash;
 
-                    // 3. 시재 (현재 보유 자산 - 미정산금)
+                    // 3. 시재 (차액)
                     const tillDifference = totalAsset - unsettledAmount;
 
                     return (
@@ -1061,11 +1063,10 @@ export default function App() {
                         <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
                             <span className="font-bold text-gray-800 flex items-center text-sm">
-                              {/* 아이콘 색상을 금액과 똑같이 빨간색(red-600)으로 변경 */}
                               <Clock size={16} className="text-red-600 mr-1.5" /> 미정산금 (내가 보관 중인 판매대금)
                             </span>
                             <span className="text-xs text-gray-500 mt-1 block">
-                              누적 판매금({totalSales.toLocaleString()}원) - 대표님 송금액({remitted.toLocaleString()}원)
+                              누적 판매금({totalSales.toLocaleString()}) - 대표님 송금액({remitted.toLocaleString()})
                             </span>
                           </div>
                           <span className="font-black text-xl text-red-600 text-right">
@@ -1077,7 +1078,6 @@ export default function App() {
                         <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
                             <span className="font-bold text-gray-800 flex items-center text-sm">
-                              {/* 아이콘 색상을 금액과 똑같이 남색(indigo-600)으로 변경 */}
                               <Wallet size={16} className="text-indigo-600 mr-1.5" /> 현재 보유 자산
                             </span>
                             <span className="text-xs text-gray-500 mt-1 block">
@@ -1093,7 +1093,6 @@ export default function App() {
                         <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
                             <span className="font-bold text-gray-800 flex items-center text-sm">
-                              {/* 금액의 상태(+, -, 0)에 따라 아이콘 색상도 금액과 세트로 변하도록 변경 */}
                               <Scale size={16} className={`mr-1.5 ${tillDifference === 0 ? 'text-emerald-600' : tillDifference > 0 ? 'text-blue-600' : 'text-orange-600'}`} /> 시재 (차액)
                             </span>
                             <span className="text-xs text-gray-500 mt-1 block">
@@ -1106,7 +1105,6 @@ export default function App() {
                         </div>
                       </div>
                     );
-
                   })()}
                 </div>
               )}
@@ -1351,7 +1349,7 @@ export default function App() {
                             <th className="px-6 py-4 font-semibold w-[20%] cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
                             <th className="px-6 py-4 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('qty')}><div className="flex items-center justify-end gap-1">총 수량 {getSortIcon('qty')}</div></th>
                             <th className="px-6 py-4 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('sellPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('sellPrice')}</div></th>
-                            <th className="px-6 py-4 font-semibold text-center w-28 whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은 수량 {getSortIcon('remainQty')}</div></th>
+                            <th className="px-6 py-4 font-semibold text-center w-28 whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은수량 {getSortIcon('remainQty')}</div></th>
                             <th className="px-6 py-4 font-semibold text-center w-24 whitespace-nowrap">관리</th>
                           </tr>
                         </thead>
@@ -1400,7 +1398,7 @@ export default function App() {
                       </table>
                     </div>
 
-                    {/* --- 👇 여기에 추가된 하단 요약 칸 --- */}
+                    {/* 하단 요약 칸 */}
                     {(() => {
                       const totalQty = processedInventory.reduce((acc, curr) => acc + curr.qty, 0);
                       const remainQty = processedInventory.reduce((acc, curr) => acc + curr.remainQty, 0);
@@ -1416,7 +1414,6 @@ export default function App() {
                         </div>
                       );
                     })()}
-                    {/* --- 👆 추가된 부분 끝 --- */}
 
                   </>
                 )}
