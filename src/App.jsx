@@ -522,8 +522,17 @@ export default function App() {
   const [mapEditForm, setMapEditForm] = useState(null);
 
   const [showRawDataInput, setShowRawDataInput] = useState(false);
-  const [addMode, setAddMode] = useState('manual'); // 'bulk' 또는 'manual'
-  const [manualAddForm, setManualAddForm] = useState({ product: '', option: '', qty: 1, sellPrice: 0 }); 
+  // --- 탭 및 정산 현황 상태 추가 ---
+  const [summaryTab, setSummaryTab] = useState('sales'); // 'sales' 또는 'settlement'
+  const [settlementData, setSettlementData] = useState(() => {
+    const saved = localStorage.getItem('settlementData');
+    return saved ? JSON.parse(saved) : { intermediate: 0, unsettled: 0, account: 0, cash: 0, till: 0 };
+  });
+
+  // 정산 현황이 바뀔 때마다 브라우저에 임시 저장 (새로고침해도 유지됨)
+  useEffect(() => {
+    localStorage.setItem('settlementData', JSON.stringify(settlementData));
+  }, [settlementData]);
 
   const handleAddManualInv = async (e) => {
     e.preventDefault();
@@ -839,70 +848,119 @@ export default function App() {
 
           <div className="lg:col-span-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col">
-              <div className="px-5 py-3.5 bg-gray-100 border-b border-gray-200 flex justify-between items-center shrink-0">
-                <span className="font-bold text-base text-gray-800 flex items-center gap-2">
-                  <PieChart size={18} className="text-gray-600" /> 판매 요약
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-5 divide-x divide-gray-200 border-b border-gray-100 text-center bg-white shrink-0">
-                <div className="p-3 md:p-4">
-                  <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">오늘 총 판매 수량</div>
-                  <div className="font-bold text-emerald-600 text-base lg:text-lg">{todayTotalQty}개</div>
-                </div>
-                <div className="p-3 md:p-4">
-                  <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">오늘 총 판매 금액</div>
-                  <div className="font-bold text-emerald-600 text-base lg:text-lg">{todayTotalAmount.toLocaleString()}원</div>
-                </div>
-                <div className="p-3 md:p-4 bg-gray-50/30">
-                  <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">누적 판매 수량</div>
-                  <div className="font-bold text-blue-600 text-base lg:text-lg">{totalSalesSummary.totalQty}개</div>
-                </div>
-                <div className="p-3 md:p-4 bg-gray-50/30">
-                  <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">누적 판매 금액</div>
-                  <div className="font-bold text-blue-600 text-base lg:text-lg">{totalSalesSummary.totalAmount.toLocaleString()}원</div>
-                </div>
-                <div className="p-3 md:p-4 bg-orange-50/30">
-                  <div className="text-[11px] md:text-xs font-medium text-orange-600 mb-1">남은 재고</div>
-                  <div className="font-bold text-orange-600 text-base lg:text-lg">{totalRemainQty}개</div>
-                </div>
+              {/* --- 👇 여기서부터 탭 UI 시작 --- */}
+              <div className="flex bg-gray-100 pt-2 px-3 gap-1 border-b border-gray-200 shrink-0">
+                <button
+                  onClick={() => setSummaryTab('sales')}
+                  className={`px-4 py-2.5 rounded-t-lg font-bold text-sm transition-colors flex items-center gap-2 ${summaryTab === 'sales' ? 'bg-white text-gray-800 border-t border-x border-gray-200 shadow-[0_4px_0_0_white] relative z-10' : 'text-gray-500 hover:bg-gray-200/50'}`}
+                >
+                  <PieChart size={16} /> 판매 요약
+                </button>
+                <button
+                  onClick={() => setSummaryTab('settlement')}
+                  className={`px-4 py-2.5 rounded-t-lg font-bold text-sm transition-colors flex items-center gap-2 ${summaryTab === 'settlement' ? 'bg-white text-gray-800 border-t border-x border-gray-200 shadow-[0_4px_0_0_white] relative z-10' : 'text-gray-500 hover:bg-gray-200/50'}`}
+                >
+                  <Database size={16} /> 정산 현황
+                </button>
               </div>
 
-              <div className="bg-gray-50 px-5 py-2.5 border-b border-gray-100 flex items-center shrink-0">
-                <span className="text-sm font-bold text-gray-700">오늘 판매 상세 내역</span>
-              </div>
-              <div className="flex-1 overflow-y-auto min-h-0 bg-white">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-white sticky top-0 shadow-sm text-gray-500">
-                    <tr>
-                      <th className="px-4 py-3 font-medium">상품명</th>
-                      <th className="px-4 py-3 font-medium">옵션명</th>
-                      <th className="px-4 py-3 font-medium text-right">수량</th>
-                      <th className="px-4 py-3 font-medium text-right">금액</th>
-                      <th className="pl-8 pr-4 py-3 font-medium">비고</th>
-                      <th className="px-3 py-3 text-center w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {todayDetailedSales.length === 0 ? (
-                      <tr><td colSpan="6" className="text-center text-gray-400 py-10">오늘 등록된 판매 내역이 없습니다.</td></tr>
-                    ) : (
-                      todayDetailedSales.map((sale) => (
-                        <tr key={sale.id} className="hover:bg-emerald-50/50 group transition-colors">
-                          <td className="px-4 py-3 font-medium text-gray-800">{sale.product}</td>
-                          <td className="px-4 py-3 text-gray-600">{sale.option}</td>
-                          <td className="px-4 py-3 text-right font-medium">{sale.quantity}</td>
-                          <td className="px-4 py-3 text-right text-emerald-600 font-bold">{sale.totalPrice.toLocaleString()}원</td>
-                          <td className="pl-8 pr-4 py-3 text-gray-500 text-xs truncate max-w-[150px]" title={sale.note}>{sale.note}</td>
-                          <td className="px-3 py-3 text-center">
-                            <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="내역 삭제"><Trash2 size={16} /></button>
-                          </td>
+              {/* 탭 1: 기존 판매 요약 화면 */}
+              {summaryTab === 'sales' && (
+                <>
+                  <div className="grid grid-cols-5 divide-x divide-gray-200 border-b border-gray-100 text-center bg-white shrink-0">
+                    <div className="p-3 md:p-4">
+                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">오늘 총 판매 수량</div>
+                      <div className="font-bold text-emerald-600 text-base lg:text-lg">{todayTotalQty}개</div>
+                    </div>
+                    <div className="p-3 md:p-4">
+                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">오늘 총 판매 금액</div>
+                      <div className="font-bold text-emerald-600 text-base lg:text-lg">{todayTotalAmount.toLocaleString()}원</div>
+                    </div>
+                    <div className="p-3 md:p-4 bg-gray-50/30">
+                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">누적 판매 수량</div>
+                      <div className="font-bold text-blue-600 text-base lg:text-lg">{totalSalesSummary.totalQty}개</div>
+                    </div>
+                    <div className="p-3 md:p-4 bg-gray-50/30">
+                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">누적 판매 금액</div>
+                      <div className="font-bold text-blue-600 text-base lg:text-lg">{totalSalesSummary.totalAmount.toLocaleString()}원</div>
+                    </div>
+                    <div className="p-3 md:p-4 bg-orange-50/30">
+                      <div className="text-[11px] md:text-xs font-medium text-orange-600 mb-1">남은 재고</div>
+                      <div className="font-bold text-orange-600 text-base lg:text-lg">{totalRemainQty}개</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 px-5 py-2.5 border-b border-gray-100 flex items-center shrink-0">
+                    <span className="text-sm font-bold text-gray-700">오늘 판매 상세 내역</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto min-h-0 bg-white">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-white sticky top-0 shadow-sm text-gray-500">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">상품명</th>
+                          <th className="px-4 py-3 font-medium">옵션명</th>
+                          <th className="px-4 py-3 font-medium text-right">수량</th>
+                          <th className="px-4 py-3 font-medium text-right">금액</th>
+                          <th className="pl-8 pr-4 py-3 font-medium">비고</th>
+                          <th className="px-3 py-3 text-center w-10"></th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {todayDetailedSales.length === 0 ? (
+                          <tr><td colSpan="6" className="text-center text-gray-400 py-10">오늘 등록된 판매 내역이 없습니다.</td></tr>
+                        ) : (
+                          todayDetailedSales.map((sale) => (
+                            <tr key={sale.id} className="hover:bg-emerald-50/50 group transition-colors">
+                              <td className="px-4 py-3 font-medium text-gray-800">{sale.product}</td>
+                              <td className="px-4 py-3 text-gray-600">{sale.option}</td>
+                              <td className="px-4 py-3 text-right font-medium">{sale.quantity}</td>
+                              <td className="px-4 py-3 text-right text-emerald-600 font-bold">{sale.totalPrice.toLocaleString()}원</td>
+                              <td className="pl-8 pr-4 py-3 text-gray-500 text-xs truncate max-w-[150px]" title={sale.note}>{sale.note}</td>
+                              <td className="px-3 py-3 text-center">
+                                <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="내역 삭제"><Trash2 size={16} /></button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* 탭 2: 정산 현황 화면 */}
+              {summaryTab === 'settlement' && (
+                <div className="flex-1 p-5 bg-white overflow-y-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[
+                      { key: 'intermediate', label: '💸 중간 정산금' },
+                      { key: 'unsettled', label: '⏳ 미정산금' },
+                      { key: 'account', label: '🏦 계좌 내 금액' },
+                      { key: 'cash', label: '💵 보유중인 현금' },
+                      { key: 'till', label: '🪙 시재' }
+                    ].map((item) => (
+                      <div key={item.key} className="border border-gray-200 bg-gray-50/50 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <label className="block text-sm font-bold text-gray-700 mb-3">{item.label}</label>
+                        <div className="flex items-center">
+                          <input
+                            type="number"
+                            value={settlementData[item.key] === 0 ? '' : settlementData[item.key]}
+                            onChange={(e) => setSettlementData({ ...settlementData, [item.key]: Number(e.target.value) })}
+                            className="w-full text-right font-bold text-lg border-b-2 border-gray-300 focus:border-indigo-500 outline-none bg-transparent py-1 transition-colors"
+                            placeholder="0"
+                          />
+                          <span className="ml-2 font-medium text-gray-600">원</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex justify-between items-center shadow-sm">
+                    <span className="font-bold text-indigo-800">총 자산 합계 (계좌 + 현금)</span>
+                    <span className="font-black text-xl text-indigo-600">{(Number(settlementData.account) + Number(settlementData.cash)).toLocaleString()} 원</span>
+                  </div>
+                </div>
+              )}
+              {/* --- 👆 여기까지 탭 UI 교체 끝 --- */}
             </div>
           </div>
         </div>
@@ -1144,7 +1202,7 @@ export default function App() {
                             <th className="px-6 py-4 font-semibold w-[20%] cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
                             <th className="px-6 py-4 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('qty')}><div className="flex items-center justify-end gap-1">총 수량 {getSortIcon('qty')}</div></th>
                             <th className="px-6 py-4 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('sellPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('sellPrice')}</div></th>
-                            <th className="px-6 py-4 font-semibold text-center w-28 whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은수량 {getSortIcon('remainQty')}</div></th>
+                            <th className="px-6 py-4 font-semibold text-center w-28 whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은 수량 {getSortIcon('remainQty')}</div></th>
                             <th className="px-6 py-4 font-semibold text-center w-24 whitespace-nowrap">관리</th>
                           </tr>
                         </thead>
