@@ -215,6 +215,16 @@ export default function App() {
 
         const { data: mapData, error: mapErr } = await supabase.from('option_mappings').select('*');
         if (!mapErr && mapData) setOptionMappings(mapData);
+
+        // 정산 현황 데이터 불러오기 (단일 행 id: 1 기준)
+        const { data: settleData, error: settleErr } = await supabase.from('settlement').select('*').eq('id', 1).maybeSingle();
+        if (!settleErr && settleData) {
+           setSettlementData({
+             intermediate: settleData.intermediate || 0,
+             account: settleData.account || 0,
+             cash: settleData.cash || 0
+           });
+        }
         
       } catch (error) {
         console.error("DB Fetch Error:", error);
@@ -522,17 +532,30 @@ export default function App() {
   const [mapEditForm, setMapEditForm] = useState(null);
 
   const [showRawDataInput, setShowRawDataInput] = useState(false);
-  // --- 탭 및 정산 현황 상태 추가 ---
-  const [summaryTab, setSummaryTab] = useState('sales'); // 'sales' 또는 'settlement'
-  const [settlementData, setSettlementData] = useState(() => {
-    const saved = localStorage.getItem('settlementData');
-    return saved ? JSON.parse(saved) : { intermediate: 0, unsettled: 0, account: 0, cash: 0, till: 0 };
-  });
+  // --- 정산 현황 탭 상태 ---
+  const [summaryTab, setSummaryTab] = useState('sales'); 
+  const [settlementData, setSettlementData] = useState({ intermediate: 0, account: 0, cash: 0 });
+  const [isSettlementSaving, setIsSettlementSaving] = useState(false); // 저장 버튼 로딩 상태
 
-  // 정산 현황이 바뀔 때마다 브라우저에 임시 저장 (새로고침해도 유지됨)
-  useEffect(() => {
-    localStorage.setItem('settlementData', JSON.stringify(settlementData));
-  }, [settlementData]);
+  // 정산 현황 DB 저장 로직
+  const handleSaveSettlement = async () => {
+    setIsSettlementSaving(true);
+    if (supabase) {
+      const { error } = await supabase.from('settlement').upsert([{
+        id: 1, // 정산 현황은 여러 개가 필요 없으므로 고정 ID(1)를 사용합니다.
+        intermediate: settlementData.intermediate,
+        account: settlementData.account,
+        cash: settlementData.cash
+      }]);
+      if (error) {
+        console.error("정산 현황 저장 오류:", error);
+        alert("DB 저장에 실패했습니다.");
+      } else {
+        alert("정산 데이터가 DB에 안전하게 저장되었습니다!");
+      }
+    }
+    setIsSettlementSaving(false);
+  };
 
   const handleAddManualInv = async (e) => {
     e.preventDefault();
@@ -957,7 +980,18 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* 자동 계산 영역 */}
+                  {/* DB 저장 버튼 추가 */}
+                  <div className="flex justify-end mb-6">
+                    <button 
+                      onClick={handleSaveSettlement} 
+                      disabled={isSettlementSaving}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-colors flex items-center gap-2 disabled:bg-indigo-400"
+                    >
+                      <Database size={16} /> 
+                      {isSettlementSaving ? "저장 중..." : "정산 데이터 변경사항 DB 저장"}
+                    </button>
+                  </div>
+
                   {(() => {
                     const remitted = Number(settlementData.intermediate) || 0; // 대표님께 송금한 정산금
                     const inAccount = Number(settlementData.account) || 0;     // 내 계좌 잔액
@@ -978,7 +1012,7 @@ export default function App() {
                         <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
                             <span className="font-bold text-red-800 flex items-center text-sm"><Clock size={16} className="mr-1.5" /> 미정산금 (내가 보관 중인 판매대금)</span>
-                            <span className="text-xs text-red-600/80 mt-1 block">누적 판매금({totalSales.toLocaleString()}) - 대표님 송금액({remitted.toLocaleString()})</span>
+                            <span className="text-xs text-red-600/80 mt-1 block">누적 판매금({totalSales.toLocaleString()}원) - 대표님 송금액({remitted.toLocaleString()}원)</span>
                           </div>
                           <span className="font-black text-xl text-red-600 text-right">{unsettledAmount.toLocaleString()} 원</span>
                         </div>
