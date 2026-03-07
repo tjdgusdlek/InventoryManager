@@ -440,12 +440,15 @@ export default function App() {
 
   // --- 동적 데이터 계산 로직 ---
   const currentInventory = useMemo(() => {
-    return inventoryData.map(item => {
+    const calculated = inventoryData.map(item => {
       const soldQty = sales
         .filter(sale => sale.product === item.product && sale.option === item.option)
         .reduce((sum, sale) => sum + sale.quantity, 0);
       return { ...item, soldQty, remainQty: item.qty - soldQty };
     });
+    
+    // 메인 화면 재고 목록도 상품명 기준 오름차순(가나다순)으로 기본 정렬
+    return calculated.sort((a, b) => a.product.localeCompare(b.product));
   }, [sales, inventoryData]);
 
   const periodSalesSummary = useMemo(() => {
