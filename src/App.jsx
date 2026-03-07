@@ -315,6 +315,7 @@ export default function App() {
   };
 
   const applyPendingData = async () => {
+    // 1. 모든 항목이 매칭되었는지 확인
     for (const item of pendingRawData) {
       if (!item.mapTo.product || !item.mapTo.option) return alert(`[${item.rawId}] 항목의 매칭을 완료해주세요.`);
     }
@@ -322,10 +323,27 @@ export default function App() {
     let newInv = [...inventoryData];
     let newMappings = [...optionMappings];
 
+    // 2. pendingRawData 안에서 동일한 (product, option) 조합을 가진 항목들의 수량을 합칩니다.
+    // 이렇게 해야 DB 저장 시 중복 충돌(ON CONFLICT 에러)이 발생하지 않습니다.
+    const consolidatedItems = {};
+    
+    for (const item of pendingRawData) {
+      const key = `${item.mapTo.product}_${item.mapTo.option}`;
+      if (!consolidatedItems[key]) {
+        consolidatedItems[key] = { ...item };
+      } else {
+        consolidatedItems[key].qty += item.qty; // 수량만 더해줍니다.
+      }
+    }
+
+    const uniquePendingData = Object.values(consolidatedItems);
+
     const dbMappingsToUpsert = [];
     const dbInventoryToUpsert = [];
 
-    for (const item of pendingRawData) {
+    // 3. 중복이 제거된 uniquePendingData를 돌면서 DB 저장용 배열을 만듭니다.
+    for (const item of uniquePendingData) {
+      // 매칭 정보 업데이트
       const existingMapIdx = newMappings.findIndex(m => m.rawId === item.rawId);
       const mapData = {
         rawId: item.rawId,
@@ -337,20 +355,24 @@ export default function App() {
       
       if (existingMapIdx >= 0) newMappings[existingMapIdx] = mapData;
       else newMappings.push(mapData);
-      dbMappingsToUpsert.push(mapData);
+      
+      // Mapping 테이블은 rawId가 고유키이므로 pendingRawData 원본을 기준으로 넣어도 중복 위험이 적지만,
+      // 혹시 모를 중복을 방지하기 위해 중복 검사 후 넣습니다.
+      if(!dbMappingsToUpsert.find(m => m.rawId === mapData.rawId)) {
+        dbMappingsToUpsert.push(mapData);
+      }
 
+      // 재고 정보 업데이트
       const invIdx = newInv.findIndex(i => i.product === mapData.product && i.option === mapData.option);
       let dbItemToSave;
 
       if (invIdx >= 0) {
          newInv[invIdx] = { ...newInv[invIdx], qty: newInv[invIdx].qty + item.qty, sellPrice: mapData.sellPrice };
-         // DB 저장 시 remainQty, soldQty 같은 동적 계산 필드 제외
          const { soldQty, remainQty, ...pureData } = newInv[invIdx];
          dbItemToSave = pureData;
       } else {
          dbItemToSave = {
-           // 소수점이 없는 완벽한 정수 ID 생성
-           id: Date.now() + Math.floor(Math.random() * 10000), 
+           id: Date.now() + Math.floor(Math.random() * 10000),
            product: mapData.product,
            option: mapData.option,
            qty: item.qty,
@@ -362,6 +384,7 @@ export default function App() {
       dbInventoryToUpsert.push(dbItemToSave);
     }
 
+    // 4. DB 일괄 저장 (Upsert)
     if (supabase) {
       try {
         const { error: mapErr } = await supabase.from('option_mappings').upsert(dbMappingsToUpsert);
@@ -374,6 +397,7 @@ export default function App() {
       }
     }
 
+    // 5. 화면 상태 업데이트 및 초기화
     setOptionMappings(newMappings);
     setInventoryData(newInv);
     setPendingRawData([]);
