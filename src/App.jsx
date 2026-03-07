@@ -4,10 +4,12 @@ import { Plus, Calendar, Package, TrendingUp, Archive, PieChart, Trash2, Carrot,
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://uikjmnpqcqietillvjpl.supabase.co';
-const supabaseKey = 'sb_publishable_lQGP1enTikX8nWh9vfFqUw_FMFsnMy-';
+// .env 파일과 Vercel 환경 변수에 설정된 값을 불러옵니다.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// 환경 변수가 제대로 불러와졌을 때만 클라이언트를 생성하도록 안전장치를 추가합니다.
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 // --- 공휴일 자동화 설정 ---
 const FIXED_HOLIDAYS = ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'];
@@ -176,7 +178,7 @@ export default function App() {
   // --- PIN 번호 인증 상태 추가 ---
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [pinInput, setPinInput] = useState('');
-  const CORRECT_PIN = "4868"; // 💡 원하시는 4자리 비밀번호로 변경하세요!
+  const CORRECT_PIN = import.meta.env.VITE_ADMIN_PIN;
 
   const [isDbConnected, setIsDbConnected] = useState(!!supabase);
   const [isLoading, setIsLoading] = useState(false);
