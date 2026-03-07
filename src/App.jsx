@@ -350,16 +350,23 @@ export default function App() {
          newInv[invIdx] = { ...newInv[invIdx], qty: newInv[invIdx].qty + item.qty, sellPrice: mapData.sellPrice };
          dbInventoryToUpsert.push(newInv[invIdx]);
       } else {
-         const newInvItem = {
-           id: Date.now() + Math.random(),
-           product: mapData.product,
-           option: mapData.option,
-           qty: item.qty,
-           originPrice: 0,
-           sellPrice: mapData.sellPrice
-         };
-         newInv.push(newInvItem);
-         dbInventoryToUpsert.push(newInvItem);
+         // DB에 보낼 때는 id를 제외하고 보냅니다. (Supabase가 1, 2, 3... 자동 생성)
+        const newDbInvItem = {
+          product: mapData.product,
+          option: mapData.option,
+          qty: item.qty,
+          originPrice: 0,
+          sellPrice: mapData.sellPrice
+        };
+
+        // 1. DB 업데이트용 배열에는 id 없는 객체를 넣습니다.
+        dbInventoryToUpsert.push(newDbInvItem);
+
+        // 2. React 화면(상태)용으로는 임시로 정수 id를 부여하여 넣습니다.
+        newInv.push({ 
+          ...newDbInvItem, 
+          id: Date.now() // Math.random() 제거 (화면 렌더링용 임시 ID)
+        });
       }
     }
 
