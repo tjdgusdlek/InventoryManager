@@ -754,7 +754,7 @@ export default function App() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Carrot className="text-orange-500" />
-            당근 판매 & 재고 관리 표
+            당근 판매 & 재고 관리
           </h1>
           <div className="mt-2 flex items-center gap-2 text-xs font-semibold">
             {isDbConnected ? (
