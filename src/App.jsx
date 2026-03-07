@@ -364,20 +364,32 @@ export default function App() {
          dbInventoryToUpdate.push(newInv[invIdx]);
       } else {
          // 완전히 새로운 상품: Insert용 배열에 id 없이 삽입
-         const newDbInvItem = {
+         const invIdx = newInv.findIndex(i => i.product === mapData.product && i.option === mapData.option);
+      
+      let dbItemToSave; // DB에 보낼 순수 데이터 객체
+
+      if (invIdx >= 0) {
+         // 화면에 보여줄 배열(newInv) 업데이트
+         newInv[invIdx] = { ...newInv[invIdx], qty: newInv[invIdx].qty + item.qty, sellPrice: mapData.sellPrice };
+         
+         // DB에 저장할 때는 기존 객체에서 불필요한 컬럼(soldQty, remainQty)을 제거하고 순수한 값만 추출합니다.
+         const { soldQty, remainQty, ...pureData } = newInv[invIdx]; 
+         dbItemToSave = pureData;
+      } else {
+         dbItemToSave = {
+           id: Date.now() + Math.random(), // 고유 ID 생성
            product: mapData.product,
            option: mapData.option,
            qty: item.qty,
            originPrice: 0,
            sellPrice: mapData.sellPrice
          };
-         dbInventoryToInsert.push(newDbInvItem);
-         
-         // 화면(UI) 렌더링용 임시 ID 부여
-         newInv.push({ 
-           ...newDbInvItem, 
-           id: Date.now() + Math.floor(Math.random() * 1000) 
-         });
+         // 새 아이템 추가
+         newInv.push(dbItemToSave);
+      }
+      
+      // DB 업서트 배열에 추가
+      dbInventoryToUpsert.push(dbItemToSave);
       }
     }
 
