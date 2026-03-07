@@ -299,14 +299,25 @@ export default function App() {
 
   const saveInvEdit = async () => {
     if (!invEditForm.product || !invEditForm.option || invEditForm.qty < 0) return alert("입력값을 확인해주세요.");
-    const updatedInv = { ...invEditForm, qty: Number(invEditForm.qty), originPrice: Number(invEditForm.originPrice), sellPrice: Number(invEditForm.sellPrice) };
+    
+    // 💡 해결의 핵심: DB에 실제로 존재하는 컬럼만 추출해서 묶어줍니다. (remainQty, soldQty 등 제외)
+    const dbUpdateData = {
+      product: invEditForm.product,
+      option: invEditForm.option,
+      qty: Number(invEditForm.qty),
+      originPrice: Number(invEditForm.originPrice) || 0,
+      sellPrice: Number(invEditForm.sellPrice) || 0
+    };
     
     if (supabase) {
-      const { error } = await supabase.from('inventory').update(updatedInv).eq('id', updatedInv.id);
-      if (error) { console.error(error); return alert("수정 실패"); }
+      // 추출한 순수 데이터(dbUpdateData)만 DB로 전송합니다.
+      const { error } = await supabase.from('inventory').update(dbUpdateData).eq('id', invEditForm.id);
+      if (error) { console.error("DB 수정 에러:", error); return alert("수정 실패"); }
     }
 
-    setInventoryData(inventoryData.map(i => i.id === updatedInv.id ? updatedInv : i));
+    // 화면(React 상태)도 업데이트 해줍니다.
+    const updatedInvForState = { ...invEditForm, ...dbUpdateData };
+    setInventoryData(inventoryData.map(i => i.id === invEditForm.id ? updatedInvForState : i));
     cancelInvEdit();
   };
 
