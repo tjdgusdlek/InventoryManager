@@ -177,26 +177,48 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
 export default function App() {
   // --- PIN 번호 인증 상태 추가 ---
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const CORRECT_PIN = import.meta.env.VITE_ADMIN_PIN;
+  // --- PIN 번호 상태 (배열로 관리) ---
+  const [pinDigits, setPinDigits] = useState(['', '', '', '']);
+  const pinRefs = useRef([]);
+  const CORRECT_PIN = import.meta.env.VITE_ADMIN_PIN; // .env에서 PIN 가져오기
 
-  const [isDbConnected, setIsDbConnected] = useState(!!supabase);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const [sales, setSales] = useState([]); 
-  const [inventoryData, setInventoryData] = useState([]); 
-  const [optionMappings, setOptionMappings] = useState([]); 
-  
-  const [pendingRawData, setPendingRawData] = useState([]); 
-  const [invTab, setInvTab] = useState('stock'); 
+  const handlePinChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return; // 숫자만 허용
+    const newDigits = [...pinDigits];
+    newDigits[index] = value.slice(-1); // 마지막 글자만 취함
+    setPinDigits(newDigits);
+
+    // 다음 칸으로 자동 포커스 이동
+    if (value && index < 3) pinRefs.current[index + 1].focus();
+  };
+
+  const handlePinKeyDown = (index, e) => {
+    // 백스페이스 누를 때 이전 칸으로 자동 포커스 이동
+    if (e.key === 'Backspace' && !pinDigits[index] && index > 0) {
+      pinRefs.current[index - 1].focus();
+    }
+  };
+
+  const handlePinPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 4);
+    if (pastedData) {
+      const newDigits = ['', '', '', ''];
+      for (let i = 0; i < pastedData.length; i++) newDigits[i] = pastedData[i];
+      setPinDigits(newDigits);
+      const focusIndex = pastedData.length < 4 ? pastedData.length : 3;
+      pinRefs.current[focusIndex].focus();
+    }
+  };
 
   const handlePinSubmit = (e) => {
     e.preventDefault();
-    if (pinInput === CORRECT_PIN) {
+    if (pinDigits.join('') === CORRECT_PIN) {
       setIsAuthorized(true);
     } else {
       alert("PIN 번호가 일치하지 않습니다.");
-      setPinInput('');
+      setPinDigits(['', '', '', '']); // 초기화
+      if (pinRefs.current[0]) pinRefs.current[0].focus();
     }
   };
 
@@ -761,24 +783,34 @@ export default function App() {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-bold">DB 데이터를 불러오는 중입니다...</div>;
   }
 
-  // --- 인증되지 않은 경우 PIN 입력 화면 표시 ---
+  // --- PIN 인증 로그인 화면 ---
   if (!isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <form onSubmit={handlePinSubmit} className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border border-gray-100">
-          <div className="flex justify-center mb-4"><Carrot size={48} className="text-orange-500" /></div>
+          <div className="flex justify-center mb-4"><Carrot size={48} className="text-orange-500 drop-shadow-sm" /></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">관리자 로그인</h2>
-          <p className="text-sm text-gray-500 mb-6">시스템에 접근하려면 PIN 번호를 입력하세요.</p>
-          <input
-            type="password"
-            maxLength="4"
-            autoFocus
-            value={pinInput}
-            onChange={(e) => setPinInput(e.target.value.replace(/[^0-9]/g, ''))} // 숫자만 입력 가능
-            placeholder="****"
-            className="w-full text-center tracking-[1em] text-2xl font-bold border-b-2 border-gray-300 focus:border-orange-500 outline-none pb-2 mb-6 transition-colors bg-transparent"
-          />
-          <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors shadow-sm">
+          <p className="text-sm text-gray-500 mb-8">시스템에 접근하려면 PIN 번호를 입력하세요.</p>
+          
+          {/* 4개의 네모 박스 입력창 */}
+          <div className="flex justify-center gap-3 mb-8">
+            {[0, 1, 2, 3].map((index) => (
+              <input
+                key={index}
+                ref={(el) => (pinRefs.current[index] = el)}
+                type="password"
+                maxLength={1}
+                value={pinDigits[index]}
+                onChange={(e) => handlePinChange(index, e.target.value)}
+                onKeyDown={(e) => handlePinKeyDown(index, e)}
+                onPaste={handlePinPaste}
+                autoFocus={index === 0}
+                className="w-14 h-16 text-center text-3xl font-bold border-2 border-gray-300 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 outline-none transition-all bg-gray-50 focus:bg-white shadow-inner"
+              />
+            ))}
+          </div>
+
+          <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-md active:scale-[0.98]">
             접속하기
           </button>
         </form>
