@@ -173,6 +173,11 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
 };
 
 export default function App() {
+  // --- PIN 번호 인증 상태 추가 ---
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const CORRECT_PIN = "4868"; // 💡 원하시는 4자리 비밀번호로 변경하세요!
+
   const [isDbConnected, setIsDbConnected] = useState(!!supabase);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -182,6 +187,16 @@ export default function App() {
   
   const [pendingRawData, setPendingRawData] = useState([]); 
   const [invTab, setInvTab] = useState('stock'); 
+
+  const handlePinSubmit = (e) => {
+    e.preventDefault();
+    if (pinInput === CORRECT_PIN) {
+      setIsAuthorized(true);
+    } else {
+      alert("PIN 번호가 일치하지 않습니다.");
+      setPinInput('');
+    }
+  };
 
   // --- Supabase 초기 데이터 페칭 ---
   useEffect(() => {
@@ -697,9 +712,35 @@ export default function App() {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-bold">DB 데이터를 불러오는 중입니다...</div>;
   }
 
+  // --- 인증되지 않은 경우 PIN 입력 화면 표시 ---
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <form onSubmit={handlePinSubmit} className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border border-gray-100">
+          <div className="flex justify-center mb-4"><Carrot size={48} className="text-orange-500" /></div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">관리자 로그인</h2>
+          <p className="text-sm text-gray-500 mb-6">시스템에 접근하려면 PIN 번호를 입력하세요.</p>
+          <input
+            type="password"
+            maxLength="4"
+            autoFocus
+            value={pinInput}
+            onChange={(e) => setPinInput(e.target.value.replace(/[^0-9]/g, ''))} // 숫자만 입력 가능
+            placeholder="****"
+            className="w-full text-center tracking-[1em] text-2xl font-bold border-b-2 border-gray-300 focus:border-orange-500 outline-none pb-2 mb-6 transition-colors bg-transparent"
+          />
+          <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors shadow-sm">
+            접속하기
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 p-4 md:p-8 font-sans">
       
+      {/* 글로벌 Datalist */}
       <datalist id="globalProductList">
         {uniqueProducts.map(p => <option key={p} value={p} />)}
       </datalist>
