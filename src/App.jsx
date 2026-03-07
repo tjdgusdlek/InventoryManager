@@ -1019,13 +1019,13 @@ export default function App() {
                         <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
                             <span className="font-bold text-gray-800 flex items-center text-sm">
-                              <Clock size={16} className="text-gray-500 mr-1.5" /> 미정산금 (내가 보관 중인 판매대금)
+                              {/* 아이콘 색상을 금액과 똑같이 빨간색(red-600)으로 변경 */}
+                              <Clock size={16} className="text-red-600 mr-1.5" /> 미정산금 (내가 보관 중인 판매대금)
                             </span>
                             <span className="text-xs text-gray-500 mt-1 block">
-                              누적 판매금({totalSales.toLocaleString()}) - 대표님 송금액({remitted.toLocaleString()})
+                              누적 판매금({totalSales.toLocaleString()}원) - 대표님 송금액({remitted.toLocaleString()}원)
                             </span>
                           </div>
-                          {/* 금액에만 빨간색 포인트 */}
                           <span className="font-black text-xl text-red-600 text-right">
                             {unsettledAmount.toLocaleString()} 원
                           </span>
@@ -1035,13 +1035,13 @@ export default function App() {
                         <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
                             <span className="font-bold text-gray-800 flex items-center text-sm">
-                              <Wallet size={16} className="text-gray-500 mr-1.5" /> 현재 보유 자산
+                              {/* 아이콘 색상을 금액과 똑같이 남색(indigo-600)으로 변경 */}
+                              <Wallet size={16} className="text-indigo-600 mr-1.5" /> 현재 보유 자산
                             </span>
                             <span className="text-xs text-gray-500 mt-1 block">
                               내 계좌 잔액 + 보유중인 현금
                             </span>
                           </div>
-                          {/* 금액에만 남색 포인트 */}
                           <span className="font-black text-xl text-indigo-600 text-right">
                             {totalAsset.toLocaleString()} 원
                           </span>
@@ -1051,19 +1051,20 @@ export default function App() {
                         <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
                             <span className="font-bold text-gray-800 flex items-center text-sm">
-                              <Scale size={16} className="text-gray-500 mr-1.5" /> 시재 (차액)
+                              {/* 금액의 상태(+, -, 0)에 따라 아이콘 색상도 금액과 세트로 변하도록 변경 */}
+                              <Scale size={16} className={`mr-1.5 ${tillDifference === 0 ? 'text-emerald-600' : tillDifference > 0 ? 'text-blue-600' : 'text-orange-600'}`} /> 시재 (차액)
                             </span>
                             <span className="text-xs text-gray-500 mt-1 block">
                               현재 보유 자산 - 미정산금
                             </span>
                           </div>
-                          {/* 금액에만 상태에 따른(초록/파랑/주황) 포인트 */}
                           <span className={`font-black text-xl text-right ${tillDifference === 0 ? 'text-emerald-600' : tillDifference > 0 ? 'text-blue-600' : 'text-orange-600'}`}>
                             {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} 원
                           </span>
                         </div>
                       </div>
                     );
+
                   })()}
                 </div>
               )}
