@@ -500,7 +500,53 @@ export default function App() {
   const [editingMapId, setEditingMapId] = useState(null);
   const [mapEditForm, setMapEditForm] = useState(null);
 
-  const [showRawDataInput, setShowRawDataInput] = useState(false); 
+  const [showRawDataInput, setShowRawDataInput] = useState(false);
+  const [addMode, setAddMode] = useState('manual'); // 'bulk' 또는 'manual'
+  const [manualAddForm, setManualAddForm] = useState({ product: '', option: '', qty: 1, sellPrice: 0 }); 
+
+  const handleAddManualInv = async (e) => {
+    e.preventDefault();
+    if (!manualAddForm.product || !manualAddForm.option || manualAddForm.qty <= 0) return alert("상품명, 옵션명, 올바른 수량을 입력해주세요.");
+
+    const newItem = {
+      id: Date.now() + Math.floor(Math.random() * 10000),
+      product: manualAddForm.product,
+      option: manualAddForm.option,
+      qty: Number(manualAddForm.qty),
+      originPrice: 0,
+      sellPrice: Number(manualAddForm.sellPrice) || 0
+    };
+
+    let newInv = [...inventoryData];
+    const existingIdx = newInv.findIndex(i => i.product === newItem.product && i.option === newItem.option);
+    
+    let dbItemToSave;
+
+    if (existingIdx >= 0) {
+      // 기존 재고가 있으면 수량 합산 및 단가 갱신
+      newInv[existingIdx] = {
+        ...newInv[existingIdx],
+        qty: newInv[existingIdx].qty + newItem.qty,
+        sellPrice: newItem.sellPrice
+      };
+      // DB 저장용에서 계산 필드 제외
+      const { soldQty, remainQty, ...pureData } = newInv[existingIdx];
+      dbItemToSave = pureData;
+    } else {
+      // 새로운 재고 추가
+      newInv.push(newItem);
+      dbItemToSave = newItem;
+    }
+
+    if (supabase) {
+       const { error } = await supabase.from('inventory').upsert([dbItemToSave]);
+       if (error) { console.error(error); return alert("DB 저장 중 오류가 발생했습니다."); }
+    }
+
+    setInventoryData(newInv);
+    setManualAddForm({ product: '', option: '', qty: 1, sellPrice: 0 });
+    alert("재고가 성공적으로 추가되었습니다!");
+  };
 
   const handleCloseModal = () => {
     setMaximizedView(null);
@@ -997,12 +1043,49 @@ export default function App() {
                     </div>
 
                     {showRawDataInput && (
-                      <div className="px-6 py-4 bg-orange-50/30 border-b border-gray-200 shrink-0 shadow-inner">
-                        <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2"><ClipboardPaste size={16} className="text-orange-500" /> Raw 데이터 복사 & 붙여넣기 (스마트 인식)</h3>
-                        <div className="flex gap-4">
-                          <textarea value={bulkInvInput} onChange={(e) => setBulkInvInput(e.target.value)} placeholder="상차된 상품목록 데이터를 복사해서 바로 붙여넣으세요.&#13;&#10;자동으로 옵션ID, 상품명, 수량을 인식해서 매칭해줍니다!" className="flex-1 border border-gray-300 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500 resize-none h-24 font-mono leading-relaxed bg-white" />
-                          <button onClick={handleParseRawData} className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-6 transition-colors shadow-sm flex flex-col items-center justify-center gap-1 shrink-0 w-36"><Search size={20} /><span>데이터 인식</span></button>
+                      <div className="px-6 py-4 bg-orange-50/30 border-b border-gray-200 shrink-0 shadow-inner flex flex-col gap-4">
+                        <div className="flex gap-6 border-b border-gray-200 pb-3">
+                          <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-gray-700 hover:text-orange-600 transition-colors">
+                            <input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-4 h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
+                            ✏️ 수동 직접 입력
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-gray-700 hover:text-orange-600 transition-colors">
+                            <input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-4 h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
+                            📋 텍스트 일괄 붙여넣기 (Raw Data)
+                          </label>
                         </div>
+
+                        {addMode === 'manual' ? (
+                          <form onSubmit={handleAddManualInv} className="flex gap-3 items-end bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
+                            <div className="flex-1">
+                              <label className="block text-xs font-bold text-gray-600 mb-1">상품명</label>
+                              <input list="globalProductList" value={manualAddForm.product} onChange={e => setManualAddForm({...manualAddForm, product: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="직접 입력 또는 선택" required />
+                            </div>
+                            <div className="flex-1">
+                              <label className="block text-xs font-bold text-gray-600 mb-1">옵션명</label>
+                              <input list="globalOptionList" value={manualAddForm.option} onChange={e => setManualAddForm({...manualAddForm, option: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="직접 입력 또는 선택" required />
+                            </div>
+                            <div className="w-24">
+                              <label className="block text-xs font-bold text-gray-600 mb-1">수량</label>
+                              <input type="number" min="1" value={manualAddForm.qty} onChange={e => setManualAddForm({...manualAddForm, qty: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right font-bold transition-shadow" required />
+                            </div>
+                            <div className="w-32">
+                              <label className="block text-xs font-bold text-gray-600 mb-1">판매단가(원)</label>
+                              <input type="number" min="0" value={manualAddForm.sellPrice} onChange={e => setManualAddForm({...manualAddForm, sellPrice: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right transition-shadow" />
+                            </div>
+                            <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-6 py-2 transition-colors shadow-sm flex items-center justify-center h-[38px] shrink-0">
+                              <Plus size={18} className="mr-1"/> 추가
+                            </button>
+                          </form>
+                        ) : (
+                          <div className="bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
+                            <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2"><ClipboardPaste size={16} className="text-orange-500" /> 스마트 인식</h3>
+                            <div className="flex gap-4">
+                              <textarea value={bulkInvInput} onChange={(e) => setBulkInvInput(e.target.value)} placeholder="상차된 상품목록 데이터를 복사해서 바로 붙여넣으세요.&#13;&#10;자동으로 옵션ID, 상품명, 수량을 인식해서 매칭해줍니다!" className="flex-1 border border-gray-300 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500 resize-none h-20 font-mono leading-relaxed bg-white transition-shadow" />
+                              <button onClick={handleParseRawData} className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-6 transition-colors shadow-sm flex flex-col items-center justify-center gap-1 shrink-0 w-36"><Search size={20} /><span>데이터 인식</span></button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
