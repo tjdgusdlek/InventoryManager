@@ -250,7 +250,8 @@ export default function App() {
     if (!formData.product || !formData.option || formData.quantity <= 0) return alert("상품, 옵션, 올바른 수량을 입력해주세요.");
 
     const newSale = {
-      id: Date.now(),
+      // Date.now() 만 쓰면 겹칠 수 있으므로, 확실하게 정수 형태의 랜덤값을 더해줍니다.
+      id: Date.now() + Math.floor(Math.random() * 10000), 
       date: formData.date,
       product: formData.product,
       option: formData.option,
@@ -348,7 +349,8 @@ export default function App() {
          dbItemToSave = pureData;
       } else {
          dbItemToSave = {
-           id: Date.now() + Math.random(),
+           // 소수점이 없는 완벽한 정수 ID 생성
+           id: Date.now() + Math.floor(Math.random() * 10000), 
            product: mapData.product,
            option: mapData.option,
            qty: item.qty,
