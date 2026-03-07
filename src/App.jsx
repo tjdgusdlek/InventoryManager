@@ -1078,6 +1078,25 @@ export default function App() {
                         </tbody>
                       </table>
                     </div>
+
+                    {/* --- 👇 여기에 추가된 하단 요약 칸 --- */}
+                    {(() => {
+                      const totalQty = processedInventory.reduce((acc, curr) => acc + curr.qty, 0);
+                      const remainQty = processedInventory.reduce((acc, curr) => acc + curr.remainQty, 0);
+                      return (
+                        <div className="px-6 py-4 border-t flex justify-between items-center bg-orange-50/50 text-orange-900 shrink-0">
+                          <div className="font-medium text-sm md:text-base">
+                            <span className="opacity-80">검색된 품목:</span> <span className="font-bold text-lg">{processedInventory.length}개</span>
+                          </div>
+                          <div className="flex gap-5 md:gap-8 text-sm md:text-base items-center">
+                            <div>총 수량: <span className="font-bold text-lg md:text-xl">{totalQty}개</span></div>
+                            <div>남은 수량: <span className="font-bold text-lg md:text-xl text-orange-600">{remainQty}개</span></div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {/* --- 👆 추가된 부분 끝 --- */}
+
                   </>
                 )}
 
