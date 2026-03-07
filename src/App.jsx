@@ -474,8 +474,13 @@ export default function App() {
       return { ...item, soldQty, remainQty: item.qty - soldQty };
     });
     
-    // 메인 화면 재고 목록도 상품명 기준 오름차순(가나다순)으로 기본 정렬
-    return calculated.sort((a, b) => a.product.localeCompare(b.product));
+    // 기본 정렬: 1순위 상품명(가나다순), 2순위 옵션명(가나다순)
+    return calculated.sort((a, b) => {
+      if (a.product === b.product) {
+        return a.option.localeCompare(b.option); // 상품명이 같으면 옵션명으로 비교
+      }
+      return a.product.localeCompare(b.product); // 상품명이 다르면 상품명으로 비교
+    });
   }, [sales, inventoryData]);
 
   const periodSalesSummary = useMemo(() => {
