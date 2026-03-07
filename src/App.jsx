@@ -931,16 +931,18 @@ export default function App() {
               {/* 탭 2: 정산 현황 화면 */}
               {summaryTab === 'settlement' && (
                 <div className="flex-1 p-5 bg-white overflow-y-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* 입력 영역 */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     {[
-                      { key: 'intermediate', label: '💸 중간 정산금' },
-                      { key: 'unsettled', label: '⏳ 미정산금' },
-                      { key: 'account', label: '🏦 계좌 내 금액' },
-                      { key: 'cash', label: '💵 보유중인 현금' },
-                      { key: 'till', label: '🪙 시재' }
+                      { key: 'intermediate', label: '💰 지급받은 정산금', desc: '본사로부터 입금된 금액' },
+                      { key: 'account', label: '🏦 계좌 잔액', desc: '현재 통장에 있는 금액' },
+                      { key: 'cash', label: '💵 보유 현금', desc: '수중에 있는 현금' }
                     ].map((item) => (
                       <div key={item.key} className="border border-gray-200 bg-gray-50/50 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-                        <label className="block text-sm font-bold text-gray-700 mb-3">{item.label}</label>
+                        <div className="mb-3">
+                          <label className="block text-sm font-bold text-gray-800">{item.label}</label>
+                          <span className="text-[10px] text-gray-500">{item.desc}</span>
+                        </div>
                         <div className="flex items-center">
                           <input
                             type="number"
@@ -954,10 +956,58 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex justify-between items-center shadow-sm">
-                    <span className="font-bold text-indigo-800">총 자산 합계 (계좌 + 현금)</span>
-                    <span className="font-black text-xl text-indigo-600">{(Number(settlementData.account) + Number(settlementData.cash)).toLocaleString()} 원</span>
-                  </div>
+
+                  {/* 자동 계산 영역 */}
+                  {(() => {
+                    const received = Number(settlementData.intermediate) || 0; // 지급받은 정산금
+                    const inAccount = Number(settlementData.account) || 0;     // 계좌 잔액
+                    const inCash = Number(settlementData.cash) || 0;           // 보유 현금
+                    const totalSales = totalSalesSummary.totalAmount || 0;     // 누적 판매 금액 (자동 계산됨)
+
+                    // 1. 받아야 할 잔여 정산금 (누적 판매 금액 - 지급받은 정산금)
+                    const remainingSettlement = totalSales - received;
+                    
+                    // 2. 현재 총 보유 금액 (계좌 잔액 + 보유 현금)
+                    const totalAsset = inAccount + inCash;
+
+                    // 3. 시재 차이 (현재 총 보유 금액 - 받아야 할 잔여 정산금)
+                    // (총 보유 금액이 받아야 할 돈보다 많으면 플러스(+), 적으면 마이너스(-))
+                    const tillDifference = totalAsset - remainingSettlement;
+
+                    return (
+                      <div className="flex flex-col gap-3">
+                        <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
+                          <div>
+                            <span className="font-bold text-red-800 block text-sm">⏳ 받아야 할 잔여 정산금</span>
+                            <span className="text-xs text-red-600/80">누적 판매액({totalSales.toLocaleString()}) - 지급받은 정산금({received.toLocaleString()})</span>
+                          </div>
+                          <span className="font-black text-xl text-red-600 text-right">{remainingSettlement.toLocaleString()} 원</span>
+                        </div>
+
+                        <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
+                          <div>
+                            <span className="font-bold text-indigo-800 block text-sm">📊 총 보유 금액</span>
+                            <span className="text-xs text-indigo-600/80">계좌 잔액 + 보유 현금</span>
+                          </div>
+                          <span className="font-black text-xl text-indigo-600 text-right">{totalAsset.toLocaleString()} 원</span>
+                        </div>
+
+                        <div className={`p-4 rounded-xl border flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2 ${tillDifference === 0 ? 'bg-emerald-50 border-emerald-200' : tillDifference > 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
+                          <div>
+                            <span className={`font-bold block text-sm ${tillDifference === 0 ? 'text-emerald-800' : tillDifference > 0 ? 'text-blue-800' : 'text-orange-800'}`}>
+                              ⚖️ 시재 확인 (차액)
+                            </span>
+                            <span className={`text-xs ${tillDifference === 0 ? 'text-emerald-600/80' : tillDifference > 0 ? 'text-blue-600/80' : 'text-orange-600/80'}`}>
+                              총 보유 금액 - 잔여 정산금
+                            </span>
+                          </div>
+                          <span className={`font-black text-2xl text-right ${tillDifference === 0 ? 'text-emerald-600' : tillDifference > 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                            {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} 원
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
               {/* --- 👆 여기까지 탭 UI 교체 끝 --- */}
