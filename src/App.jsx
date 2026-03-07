@@ -4,9 +4,8 @@ import { Plus, Calendar, Package, TrendingUp, Archive, PieChart, Trash2, Carrot,
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
 
-// 환경 변수에서 값을 불러옵니다. (없을 경우를 대비해 기존 값 폴백 유지)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://uikjmnpqcqietillvjpl.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_lQGP1enTikX8nWh9vfFqUw_FMFsnMy-';
+const supabaseUrl = 'https://uikjmnpqcqietillvjpl.supabase.co';
+const supabaseKey = 'sb_publishable_lQGP1enTikX8nWh9vfFqUw_FMFsnMy-';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -173,18 +172,12 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
   );
 };
 
-// 로컬 환경용 초기 데이터 (Supabase가 연결되지 않았을 때만 사용됨)
-const INITIAL_INVENTORY = [
-  { id: 1, product: '공간활용 수납장', option: '5박스 55cm', qty: 1, originPrice: 58900, sellPrice: 25000 },
-  { id: 2, product: '공간활용 수납장', option: '5박스 65cm', qty: 5, originPrice: 69900, sellPrice: 30000 },
-];
-
 export default function App() {
   const [isDbConnected, setIsDbConnected] = useState(!!supabase);
   const [isLoading, setIsLoading] = useState(false);
   
   const [sales, setSales] = useState([]); 
-  const [inventoryData, setInventoryData] = useState(INITIAL_INVENTORY); 
+  const [inventoryData, setInventoryData] = useState([]); 
   const [optionMappings, setOptionMappings] = useState([]); 
   
   const [pendingRawData, setPendingRawData] = useState([]); 
@@ -257,7 +250,7 @@ export default function App() {
     if (!formData.product || !formData.option || formData.quantity <= 0) return alert("상품, 옵션, 올바른 수량을 입력해주세요.");
 
     const newSale = {
-      id: Date.now(), 
+      id: Date.now(),
       date: formData.date,
       product: formData.product,
       option: formData.option,
@@ -299,25 +292,14 @@ export default function App() {
 
   const saveInvEdit = async () => {
     if (!invEditForm.product || !invEditForm.option || invEditForm.qty < 0) return alert("입력값을 확인해주세요.");
-    
-    // 💡 해결의 핵심: DB에 실제로 존재하는 컬럼만 추출해서 묶어줍니다. (remainQty, soldQty 등 제외)
-    const dbUpdateData = {
-      product: invEditForm.product,
-      option: invEditForm.option,
-      qty: Number(invEditForm.qty),
-      originPrice: Number(invEditForm.originPrice) || 0,
-      sellPrice: Number(invEditForm.sellPrice) || 0
-    };
+    const updatedInv = { ...invEditForm, qty: Number(invEditForm.qty), originPrice: Number(invEditForm.originPrice), sellPrice: Number(invEditForm.sellPrice) };
     
     if (supabase) {
-      // 추출한 순수 데이터(dbUpdateData)만 DB로 전송합니다.
-      const { error } = await supabase.from('inventory').update(dbUpdateData).eq('id', invEditForm.id);
-      if (error) { console.error("DB 수정 에러:", error); return alert("수정 실패"); }
+      const { error } = await supabase.from('inventory').update(updatedInv).eq('id', updatedInv.id);
+      if (error) { console.error(error); return alert("수정 실패"); }
     }
 
-    // 화면(React 상태)도 업데이트 해줍니다.
-    const updatedInvForState = { ...invEditForm, ...dbUpdateData };
-    setInventoryData(inventoryData.map(i => i.id === invEditForm.id ? updatedInvForState : i));
+    setInventoryData(inventoryData.map(i => i.id === updatedInv.id ? updatedInv : i));
     cancelInvEdit();
   };
 
@@ -340,8 +322,7 @@ export default function App() {
     let newMappings = [...optionMappings];
 
     const dbMappingsToUpsert = [];
-    const dbInventoryToUpdate = []; // 👈 기존 재고 업데이트용 배열
-    const dbInventoryToInsert = []; // 👈 새 재고 추가용 배열
+    const dbInventoryToUpsert = [];
 
     for (const item of pendingRawData) {
       const existingMapIdx = newMappings.findIndex(m => m.rawId === item.rawId);
@@ -358,63 +339,36 @@ export default function App() {
       dbMappingsToUpsert.push(mapData);
 
       const invIdx = newInv.findIndex(i => i.product === mapData.product && i.option === mapData.option);
-      if (invIdx >= 0) {
-         // 기존에 있던 상품: 수량 추가 및 업데이트용 배열에 삽입
-         newInv[invIdx] = { ...newInv[invIdx], qty: newInv[invIdx].qty + item.qty, sellPrice: mapData.sellPrice };
-         dbInventoryToUpdate.push(newInv[invIdx]);
-      } else {
-         // 완전히 새로운 상품: Insert용 배열에 id 없이 삽입
-         const invIdx = newInv.findIndex(i => i.product === mapData.product && i.option === mapData.option);
-      
-      let dbItemToSave; // DB에 보낼 순수 데이터 객체
+      let dbItemToSave;
 
       if (invIdx >= 0) {
-         // 화면에 보여줄 배열(newInv) 업데이트
          newInv[invIdx] = { ...newInv[invIdx], qty: newInv[invIdx].qty + item.qty, sellPrice: mapData.sellPrice };
-         
-         // DB에 저장할 때는 기존 객체에서 불필요한 컬럼(soldQty, remainQty)을 제거하고 순수한 값만 추출합니다.
-         const { soldQty, remainQty, ...pureData } = newInv[invIdx]; 
+         // DB 저장 시 remainQty, soldQty 같은 동적 계산 필드 제외
+         const { soldQty, remainQty, ...pureData } = newInv[invIdx];
          dbItemToSave = pureData;
       } else {
          dbItemToSave = {
-           id: Date.now() + Math.random(), // 고유 ID 생성
+           id: Date.now() + Math.random(),
            product: mapData.product,
            option: mapData.option,
            qty: item.qty,
            originPrice: 0,
            sellPrice: mapData.sellPrice
          };
-         // 새 아이템 추가
          newInv.push(dbItemToSave);
       }
-      
-      // DB 업서트 배열에 추가
       dbInventoryToUpsert.push(dbItemToSave);
-      }
     }
 
     if (supabase) {
       try {
-        // 1. 매핑 데이터 업데이트 (rawId 기준)
-        if (dbMappingsToUpsert.length > 0) {
-          const { error: mapErr } = await supabase.from('option_mappings').upsert(dbMappingsToUpsert);
-          if (mapErr) throw mapErr;
-        }
-
-        // 2. 기존 재고 데이터 업데이트 (수량 추가)
-        if (dbInventoryToUpdate.length > 0) {
-          const { error: invUpdErr } = await supabase.from('inventory').upsert(dbInventoryToUpdate);
-          if (invUpdErr) throw invUpdErr;
-        }
-
-        // 3. 새 재고 데이터 추가 (완전히 분리된 Insert)
-        if (dbInventoryToInsert.length > 0) {
-          const { error: invInsErr } = await supabase.from('inventory').insert(dbInventoryToInsert);
-          if (invInsErr) throw invInsErr;
-        }
+        const { error: mapErr } = await supabase.from('option_mappings').upsert(dbMappingsToUpsert);
+        if (mapErr) throw mapErr;
+        const { error: invErr } = await supabase.from('inventory').upsert(dbInventoryToUpsert);
+        if (invErr) throw invErr;
       } catch(err) {
-        console.error("🚨 DB 저장 상세 에러 로그:", err); // 에러 원인을 추적하기 위한 로그
-        return alert("DB 일괄 저장에 실패했습니다. 키보드의 [F12]를 눌러 Console 창의 빨간색 에러 메시지를 확인해주세요!");
+        console.error(err);
+        return alert("DB 일괄 저장에 실패했습니다.");
       }
     }
 
@@ -436,7 +390,6 @@ export default function App() {
     const newMappings = optionMappings.map(m => m.rawId === mapEditForm.rawId ? updatedMap : m);
     setOptionMappings(newMappings);
 
-    // 연관된 재고 단가도 업데이트
     const invIdx = inventoryData.findIndex(i => i.product === updatedMap.product && i.option === updatedMap.option);
     if (invIdx >= 0) {
        const newInv = [...inventoryData];
@@ -620,7 +573,6 @@ export default function App() {
     return sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-gray-700" /> : <ArrowDown size={14} className="text-gray-700" />;
   };
 
-  // 기존 판매 내역 데이터 (검색 및 정렬 적용)
   const modalDetailedData = useMemo(() => {
     let data = [];
     if (maximizedView === 'period') data = sales.filter(sale => sale.date >= startDate && sale.date <= endDate);
@@ -645,7 +597,6 @@ export default function App() {
     return data;
   }, [maximizedView, sales, startDate, endDate, sortConfig, searchProduct, searchOption]);
 
-  // 재고 현황 데이터 전용 (검색 및 정렬 적용)
   const processedInventory = useMemo(() => {
     let data = [...currentInventory];
     if (searchProduct.trim()) data = data.filter(item => item.product.toLowerCase().includes(searchProduct.toLowerCase().trim()));
@@ -673,7 +624,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 p-4 md:p-8 font-sans">
       
-      {/* 글로벌 Datalist */}
       <datalist id="globalProductList">
         {uniqueProducts.map(p => <option key={p} value={p} />)}
       </datalist>
@@ -681,7 +631,6 @@ export default function App() {
         {uniqueOptionsAll.map(o => <option key={o} value={o} />)}
       </datalist>
 
-      {/* Header & Supabase Connection Status */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -695,7 +644,7 @@ export default function App() {
               </span>
             ) : (
               <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-md border border-orange-200">
-                <AlertCircle size={12} /> 로컬 모드 (환경변수 설정 시 DB 영구 저장 활성화)
+                <AlertCircle size={12} /> 연결 확인 중...
               </span>
             )}
           </div>
@@ -711,7 +660,6 @@ export default function App() {
       </div>
 
       <div className="flex flex-col gap-6">
-        {/* --- 상단 영역: 새 판매 등록 (좌) + 핵심 요약 보드 (우) --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
           
           <div className="lg:col-span-4">
@@ -840,7 +788,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* --- 하단 영역: 판매 요약 (좌) + 재고 현황 (우) --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           <div className="lg:col-span-4 flex flex-col gap-6">
@@ -978,7 +925,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* --- 상세 내역 및 재고 관리 최대화 모달 --- */}
       {maximizedView && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
           <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border-2 ${maximizedView === 'period' ? 'border-emerald-400' : maximizedView === 'total' ? 'border-blue-400' : 'border-orange-400'}`}>
