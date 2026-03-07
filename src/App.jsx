@@ -2,13 +2,11 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Calendar, Package, TrendingUp, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardPaste, Link, AlertCircle, Database } from 'lucide-react';
 
 // --- Supabase 설정 ---
-// 미리보기 환경에서 발생하는 모듈 인식 오류를 방지하기 위해 임시로 주석 처리합니다.
-// Vercel 배포 시에는 아래 주석(/* ... */)을 해제하고 하단의 const supabase = null; 코드를 지워주세요!
-
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://uikjmnpqcqietillvjpl.supabase.co';
-const supabaseKey = 'sb_publishable_lQGP1enTikX8nWh9vfFqUw_FMFsnMy-';
+// 환경 변수에서 값을 불러옵니다. (없을 경우를 대비해 기존 값 폴백 유지)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '[https://uikjmnpqcqietillvjpl.supabase.co](https://uikjmnpqcqietillvjpl.supabase.co)';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_lQGP1enTikX8nWh9vfFqUw_FMFsnMy-';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
