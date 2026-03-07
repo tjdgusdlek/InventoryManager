@@ -5,7 +5,7 @@ import { Plus, Calendar, Package, TrendingUp, Archive, PieChart, Trash2, Carrot,
 import { createClient } from '@supabase/supabase-js';
 
 // 환경 변수에서 값을 불러옵니다. (없을 경우를 대비해 기존 값 폴백 유지)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '[https://uikjmnpqcqietillvjpl.supabase.co](https://uikjmnpqcqietillvjpl.supabase.co)';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://uikjmnpqcqietillvjpl.supabase.co';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_lQGP1enTikX8nWh9vfFqUw_FMFsnMy-';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
