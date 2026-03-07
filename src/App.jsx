@@ -329,7 +329,8 @@ export default function App() {
     let newMappings = [...optionMappings];
 
     const dbMappingsToUpsert = [];
-    const dbInventoryToUpsert = [];
+    const dbInventoryToUpdate = []; // 👈 기존 재고 업데이트용 배열
+    const dbInventoryToInsert = []; // 👈 새 재고 추가용 배열
 
     for (const item of pendingRawData) {
       const existingMapIdx = newMappings.findIndex(m => m.rawId === item.rawId);
@@ -347,38 +348,50 @@ export default function App() {
 
       const invIdx = newInv.findIndex(i => i.product === mapData.product && i.option === mapData.option);
       if (invIdx >= 0) {
+         // 기존에 있던 상품: 수량 추가 및 업데이트용 배열에 삽입
          newInv[invIdx] = { ...newInv[invIdx], qty: newInv[invIdx].qty + item.qty, sellPrice: mapData.sellPrice };
-         dbInventoryToUpsert.push(newInv[invIdx]);
+         dbInventoryToUpdate.push(newInv[invIdx]);
       } else {
-         // DB에 보낼 때는 id를 제외하고 보냅니다. (Supabase가 1, 2, 3... 자동 생성)
-        const newDbInvItem = {
-          product: mapData.product,
-          option: mapData.option,
-          qty: item.qty,
-          originPrice: 0,
-          sellPrice: mapData.sellPrice
-        };
-
-        // 1. DB 업데이트용 배열에는 id 없는 객체를 넣습니다.
-        dbInventoryToUpsert.push(newDbInvItem);
-
-        // 2. React 화면(상태)용으로는 임시로 정수 id를 부여하여 넣습니다.
-        newInv.push({ 
-          ...newDbInvItem, 
-          id: Date.now() // Math.random() 제거 (화면 렌더링용 임시 ID)
-        });
+         // 완전히 새로운 상품: Insert용 배열에 id 없이 삽입
+         const newDbInvItem = {
+           product: mapData.product,
+           option: mapData.option,
+           qty: item.qty,
+           originPrice: 0,
+           sellPrice: mapData.sellPrice
+         };
+         dbInventoryToInsert.push(newDbInvItem);
+         
+         // 화면(UI) 렌더링용 임시 ID 부여
+         newInv.push({ 
+           ...newDbInvItem, 
+           id: Date.now() + Math.floor(Math.random() * 1000) 
+         });
       }
     }
 
     if (supabase) {
       try {
-        const { error: mapErr } = await supabase.from('option_mappings').upsert(dbMappingsToUpsert);
-        if (mapErr) throw mapErr;
-        const { error: invErr } = await supabase.from('inventory').upsert(dbInventoryToUpsert);
-        if (invErr) throw invErr;
+        // 1. 매핑 데이터 업데이트 (rawId 기준)
+        if (dbMappingsToUpsert.length > 0) {
+          const { error: mapErr } = await supabase.from('option_mappings').upsert(dbMappingsToUpsert);
+          if (mapErr) throw mapErr;
+        }
+
+        // 2. 기존 재고 데이터 업데이트 (수량 추가)
+        if (dbInventoryToUpdate.length > 0) {
+          const { error: invUpdErr } = await supabase.from('inventory').upsert(dbInventoryToUpdate);
+          if (invUpdErr) throw invUpdErr;
+        }
+
+        // 3. 새 재고 데이터 추가 (완전히 분리된 Insert)
+        if (dbInventoryToInsert.length > 0) {
+          const { error: invInsErr } = await supabase.from('inventory').insert(dbInventoryToInsert);
+          if (invInsErr) throw invInsErr;
+        }
       } catch(err) {
-        console.error(err);
-        return alert("DB 일괄 저장에 실패했습니다.");
+        console.error("🚨 DB 저장 상세 에러 로그:", err); // 에러 원인을 추적하기 위한 로그
+        return alert("DB 일괄 저장에 실패했습니다. 키보드의 [F12]를 눌러 Console 창의 빨간색 에러 메시지를 확인해주세요!");
       }
     }
 
