@@ -990,10 +990,10 @@ export default function App() {
                     <button 
                       onClick={handleSaveSettlement} 
                       disabled={isSettlementSaving}
-                      /* 색상을 violet(판매 내역 추가 버튼 색)으로 맞추고, 글자 깨짐 방지용 whitespace-nowrap 추가 */
-                      className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 disabled:bg-violet-400 whitespace-nowrap break-keep"
+                      /* 보라색(violet)을 무채색 탭과 잘 어울리는 세련된 다크 그레이(gray-800)로 변경 */
+                      className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400 whitespace-nowrap break-keep"
                     >
-                      <Database size={16} className="shrink-0" /> 
+                      <Database size={16} className="shrink-0 text-gray-300" /> 
                       <span>{isSettlementSaving ? "저장 중..." : "정산 현황 DB 저장"}</span>
                     </button>
                   </div>
