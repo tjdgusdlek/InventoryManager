@@ -944,7 +944,7 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
                     {[
                       { key: 'intermediate', label: '대표님 송금액', desc: '입금 완료한 정산금', icon: <Coins size={16} className="text-gray-500" /> },
-                      { key: 'account', label: '내 계좌 잔액', desc: '현재 통장 잔고', icon: <Landmark size={16} className="text-gray-500" /> },
+                      { key: 'account', label: '내 계좌 잔액', desc: '현재 계좌 잔고', icon: <Landmark size={16} className="text-gray-500" /> },
                       { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={16} className="text-gray-500" /> }
                     ].map((item) => (
                       <div key={item.key} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col justify-between h-full">
@@ -1003,7 +1003,7 @@ export default function App() {
                           <div className="px-4 py-3 bg-white border border-gray-200 rounded-lg flex justify-between items-center shadow-sm">
                             <div>
                               <div className="flex items-center gap-1.5 font-bold text-gray-700 text-sm">
-                                <Wallet size={14} className="text-gray-400" /> 보유 자산 <span className="font-normal text-[10px] text-gray-400 ml-1">(통장+현금)</span>
+                                <Wallet size={14} className="text-gray-400" /> 보유 자산 <span className="font-normal text-[10px] text-gray-400 ml-1">(계좌+현금)</span>
                               </div>
                             </div>
                             <div className="font-bold text-gray-800">{totalAsset.toLocaleString()}원</div>
@@ -1347,18 +1347,23 @@ export default function App() {
                 {invTab === 'mapping' && (
                   <div className="flex-1 overflow-x-auto overflow-y-auto bg-white">
                     <div className="px-4 sm:px-6 py-3 bg-orange-50 border-b border-orange-100 shadow-sm shrink-0"><p className="text-xs sm:text-sm text-orange-800">외부 데이터(옵션ID) 매칭 관리</p></div>
-                    <table className="w-full text-sm text-left min-w-[600px]">
-                      <thead className="bg-gray-50 sticky top-0 shadow-sm text-gray-600 text-xs sm:text-sm">
-                        <tr><th className="px-4 sm:px-6 py-3">옵션ID/원본명</th><th className="px-4 py-3">매칭 상품</th><th className="px-4 py-3">매칭 옵션</th><th className="px-4 py-3 text-right">단가</th><th className="px-4 py-3 text-center">관리</th></tr>
+                    <table className="w-full text-sm text-left min-w-[320px] sm:min-w-[600px]">
+                      <thead className="bg-gray-50 sticky top-0 shadow-sm text-gray-600 text-[11px] sm:text-sm">
+                        <tr>
+                          <th className="px-2 sm:px-6 py-3 w-[35%] sm:w-1/4">옵션ID/원본명</th>
+                          <th className="px-2 sm:px-4 py-3 w-[30%] sm:w-1/4">매칭 상품<span className="sm:hidden text-gray-400 font-normal">/옵션</span></th>
+                          <th className="px-4 py-3 hidden sm:table-cell w-1/4">매칭 옵션</th>
+                          <th className="px-1 sm:px-4 py-3 text-right w-[20%] sm:w-auto">단가</th>
+                          <th className="px-1 sm:px-4 py-3 text-center w-[15%] sm:w-24">관리</th>
+                        </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {optionMappings.length === 0 ? (
                           <tr>
                             <td colSpan="5" className="py-24">
-                              {/* 💡 예쁜 매칭 데이터 없음 UI 적용 */}
                               <div className="flex flex-col items-center justify-center text-gray-400">
                                 <Link size={48} className="text-gray-200 mb-4" strokeWidth={1.5} />
-                                <span className="text-base font-medium">저장된 데이터 매칭 정보가 없습니다.</span>
+                                <span className="text-sm sm:text-base font-medium">저장된 데이터 매칭 정보가 없습니다.</span>
                               </div>
                             </td>
                           </tr>
@@ -1367,19 +1372,46 @@ export default function App() {
                               if (editingMapId === mapItem.rawId) {
                                 return (
                                   <tr key={mapItem.rawId} className="bg-yellow-50/50">
-                                    <td className="px-4 py-2 text-xs"><div className="font-mono text-gray-500">{mapItem.rawId}</div><div className="font-bold truncate max-w-[150px]">{mapItem.rawName}</div></td>
-                                    <td className="px-2 py-2"><input type="text" value={mapEditForm.product} onChange={e => setMapEditForm({...mapEditForm, product: e.target.value})} className="w-full border rounded px-1 py-1 text-xs" /></td>
-                                    <td className="px-2 py-2"><input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full border rounded px-1 py-1 text-xs" /></td>
-                                    <td className="px-2 py-2"><input type="number" value={mapEditForm.sellPrice} onChange={e => setMapEditForm({...mapEditForm, sellPrice: e.target.value})} className="w-20 border rounded px-1 py-1 text-xs text-right" /></td>
-                                    <td className="px-2 py-2 text-center"><button onClick={saveMapEdit} className="text-emerald-600 p-1"><Check size={14}/></button><button onClick={cancelMapEdit} className="text-red-500 p-1"><X size={14}/></button></td>
+                                    <td className="px-2 sm:px-6 py-2">
+                                      <div className="font-mono text-[10px] sm:text-xs text-gray-500 truncate max-w-[80px] sm:max-w-[150px]">{mapItem.rawId}</div>
+                                      <div className="font-bold text-[11px] sm:text-xs truncate max-w-[100px] sm:max-w-[150px]">{mapItem.rawName.split(',')[0]}</div>
+                                    </td>
+                                    <td className="px-1 sm:px-2 py-2">
+                                      <input type="text" value={mapEditForm.product} onChange={e => setMapEditForm({...mapEditForm, product: e.target.value})} className="w-full border rounded px-1 sm:px-2 py-1 text-[11px] sm:text-xs font-bold mb-1 sm:mb-0" placeholder="상품명" />
+                                      <input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full border rounded px-1 sm:px-2 py-1 text-[11px] sm:text-xs sm:hidden" placeholder="옵션명" />
+                                    </td>
+                                    <td className="px-2 py-2 hidden sm:table-cell"><input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full border rounded px-2 py-1 text-xs" /></td>
+                                    <td className="px-1 sm:px-2 py-2 text-right"><input type="number" inputMode="numeric" value={mapEditForm.sellPrice} onChange={e => setMapEditForm({...mapEditForm, sellPrice: e.target.value})} className="w-full sm:w-20 min-w-[50px] border rounded px-1 sm:px-2 py-1 text-[11px] sm:text-xs text-right font-bold" /></td>
+                                    <td className="px-1 sm:px-2 py-2 text-center">
+                                      <div className="flex justify-center gap-1">
+                                        <button onClick={saveMapEdit} className="text-emerald-600 bg-emerald-50 p-1 sm:p-1.5 rounded border border-emerald-200 shadow-sm"><Check size={14}/></button>
+                                        <button onClick={cancelMapEdit} className="text-red-500 bg-red-50 p-1 sm:p-1.5 rounded border border-red-200 shadow-sm"><X size={14}/></button>
+                                      </div>
+                                    </td>
                                   </tr>
                                 );
                               }
                               return (
-                                <tr key={mapItem.rawId} className="hover:bg-orange-50/40 group">
-                                  <td className="px-4 py-2 text-xs"><div className="font-mono text-gray-500">{mapItem.rawId}</div><div className="font-bold truncate max-w-[150px]">{mapItem.rawName}</div></td>
-                                  <td className="px-4 py-2 text-xs font-bold">{mapItem.product}</td><td className="px-4 py-2 text-xs">{mapItem.option}</td><td className="px-4 py-2 text-xs text-right">{mapItem.sellPrice.toLocaleString()}원</td>
-                                  <td className="px-4 py-2 text-center"><button onClick={() => startMapEdit(mapItem)} className="text-gray-400 p-1"><Edit2 size={14}/></button><button onClick={() => deleteMap(mapItem.rawId)} className="text-gray-400 p-1"><Trash2 size={14}/></button></td>
+                                <tr key={mapItem.rawId} className="hover:bg-orange-50/40 group transition-colors">
+                                  <td className="px-2 sm:px-6 py-2.5 sm:py-3.5">
+                                    <div className="font-mono text-[10px] sm:text-xs text-gray-500 truncate max-w-[80px] sm:max-w-[150px]">{mapItem.rawId}</div>
+                                    <div className="text-[10px] sm:text-xs mt-0.5 leading-tight">
+                                      <div className="font-bold text-gray-800 break-keep line-clamp-2 sm:truncate sm:max-w-[150px]">{mapItem.rawName.split(',')[0]}</div>
+                                      {mapItem.rawName.includes(',') && <div className="font-bold text-indigo-600 truncate max-w-[80px] sm:max-w-[150px] mt-0.5">옵션: {mapItem.rawName.split(',').slice(1).join(',')}</div>}
+                                    </div>
+                                  </td>
+                                  <td className="px-2 sm:px-4 py-2.5 sm:py-3.5">
+                                    <div className="font-bold text-gray-800 text-[11px] sm:text-xs break-keep">{mapItem.product}</div>
+                                    <div className="text-[10px] text-gray-500 sm:hidden mt-0.5 truncate">{mapItem.option}</div>
+                                  </td>
+                                  <td className="px-4 py-2.5 sm:py-3.5 text-[11px] sm:text-xs text-gray-600 hidden sm:table-cell">{mapItem.option}</td>
+                                  <td className="px-1 sm:px-4 py-2.5 sm:py-3.5 text-right font-medium text-blue-600 text-[11px] sm:text-xs whitespace-nowrap">{mapItem.sellPrice.toLocaleString()}원</td>
+                                  <td className="px-1 sm:px-2 py-2.5 sm:py-3.5 text-center">
+                                    <div className="flex justify-center items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button onClick={() => startMapEdit(mapItem)} className="text-gray-500 hover:text-orange-600 bg-gray-100 p-1.5 rounded-md border border-gray-200 shadow-sm" title="매칭 수정"><Edit2 size={12}/></button>
+                                      <button onClick={() => deleteMap(mapItem.rawId)} className="text-gray-500 hover:text-red-600 bg-gray-100 p-1.5 rounded-md border border-gray-200 shadow-sm" title="매칭 삭제"><Trash2 size={12}/></button>
+                                    </div>
+                                  </td>
                                 </tr>
                               );
                           })
