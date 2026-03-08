@@ -991,8 +991,13 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 px-5 py-2.5 border-b border-gray-100 flex items-center shrink-0">
+                  <div className="bg-gray-50 px-4 md:px-5 py-2.5 border-b border-gray-100 flex justify-between items-center shrink-0">
                     <span className="text-sm font-bold text-gray-700">오늘 판매 상세 내역</span>
+                    {/* 오늘 날짜와 요일을 보여주는 예쁜 뱃지 추가 */}
+                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-emerald-700 bg-emerald-100/50 px-2 py-1 rounded-md border border-emerald-200/50">
+                      <Calendar size={12} className="text-emerald-600" />
+                      <span>{formatDateWithDay(today)}</span>
+                    </div>
                   </div>
                   <div className="flex-1 overflow-y-auto min-h-0 bg-white">
                     <table className="w-full text-sm text-left">
