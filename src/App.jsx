@@ -814,7 +814,7 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">단가 (원)</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">판매 금액 (원)</label>
                       <input type="text" inputMode="numeric" name="price" value={formData.price === 0 ? '' : Number(formData.price).toLocaleString()} onChange={(e) => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'price', value: Number(rawValue) } }); }} className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition text-right" placeholder="0" required />
                     </div>
                   </div>
@@ -1214,7 +1214,7 @@ export default function App() {
                               <input type="number" inputMode="numeric" pattern="[0-9]*" min="1" value={manualAddForm.qty} onChange={e => setManualAddForm({...manualAddForm, qty: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right font-bold transition-shadow" required />
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-gray-600 mb-1">단가(원)</label>
+                              <label className="block text-xs font-bold text-gray-600 mb-1">판매 금액(원)</label>
                               <input type="text" inputMode="numeric" value={manualAddForm.sellPrice === 0 ? '' : Number(manualAddForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setManualAddForm({...manualAddForm, sellPrice: Number(rawValue)}); }} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right transition-shadow" placeholder="0" />
                             </div>
                             <button type="submit" className="col-span-2 sm:col-span-1 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-6 py-2.5 sm:py-2 transition-colors shadow-sm flex items-center justify-center sm:h-[38px] shrink-0">
@@ -1237,7 +1237,7 @@ export default function App() {
                             <th className="px-2 sm:px-4 py-3 font-semibold w-[40%] sm:w-[25%] cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1 text-[11px] sm:text-sm">상품명 <span className="sm:hidden text-gray-400 font-normal">/ 정보</span> {getSortIcon('product')}</div></th>
                             <th className="px-2 sm:px-4 py-3 font-semibold w-[20%] cursor-pointer hover:bg-gray-100 transition-colors hidden sm:table-cell" onClick={() => requestSort('option')}><div className="flex items-center gap-1 text-[11px] sm:text-sm">옵션명 {getSortIcon('option')}</div></th>
                             <th className="px-1 sm:px-4 py-3 font-semibold text-center w-[20%] sm:w-[15%] cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('qty')}><div className="flex justify-center gap-1 text-[11px] sm:text-sm">총 수량 {getSortIcon('qty')}</div></th>
-                            <th className="px-1 sm:px-4 py-3 font-semibold text-right w-[15%] cursor-pointer hover:bg-gray-100 transition-colors hidden sm:table-cell" onClick={() => requestSort('sellPrice')}><div className="flex justify-end gap-1 text-[11px] sm:text-sm">단가 {getSortIcon('sellPrice')}</div></th>
+                            <th className="px-1 sm:px-4 py-3 font-semibold text-right w-[15%] cursor-pointer hover:bg-gray-100 transition-colors hidden sm:table-cell" onClick={() => requestSort('sellPrice')}><div className="flex justify-end gap-1 text-[11px] sm:text-sm">판매 금액 {getSortIcon('sellPrice')}</div></th>
                             <th className="px-1 sm:px-4 py-3 font-semibold text-center w-[20%] sm:w-[15%] cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('remainQty')}><div className="flex justify-center gap-1 text-[11px] sm:text-sm">남은수량 {getSortIcon('remainQty')}</div></th>
                             <th className="px-1 sm:px-4 py-3 font-semibold text-center w-[20%] sm:w-[10%] text-[11px] sm:text-sm">관리</th>
                           </tr>
@@ -1260,9 +1260,9 @@ export default function App() {
                                   <tr key={item.id} className="bg-yellow-50/50">
                                     <td className="px-2 sm:px-4 py-2">
                                       <input type="text" value={invEditForm.product} onChange={e => setInvEditForm({...invEditForm, product: e.target.value})} className="w-full border rounded px-1 sm:px-2 py-1 text-xs sm:text-sm font-bold" />
-                                      {/* 모바일에서는 옵션과 단가 입력을 상품명 아래에 표시 */}
+                                      {/* 모바일에서는 옵션과 판매 금액 입력을 상품명 아래에 표시 */}
                                       <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full border rounded px-1 py-1 text-xs mt-1 sm:hidden" placeholder="옵션명" />
-                                      <input type="text" inputMode="numeric" value={invEditForm.sellPrice === 0 ? '' : Number(invEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(rawValue)}); }} className="w-full border rounded px-1 py-1 text-xs mt-1 sm:hidden text-right" placeholder="단가" />
+                                      <input type="text" inputMode="numeric" value={invEditForm.sellPrice === 0 ? '' : Number(invEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(rawValue)}); }} className="w-full border rounded px-1 py-1 text-xs mt-1 sm:hidden text-right" placeholder="판매 금액" />
                                     </td>
                                     <td className="px-2 sm:px-4 py-2 hidden sm:table-cell"><input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full border rounded px-1 sm:px-2 py-1 text-xs sm:text-sm" /></td>
                                     <td className="px-1 sm:px-4 py-2 text-center"><input type="number" inputMode="numeric" pattern="[0-9]*" value={invEditForm.qty} min="0" onChange={e => setInvEditForm({...invEditForm, qty: e.target.value})} className="w-12 sm:w-16 border rounded px-1 py-1 text-xs text-center font-bold mx-auto" /></td>
@@ -1326,7 +1326,7 @@ export default function App() {
                     <div className="flex-1 overflow-x-auto overflow-y-auto">
                       <table className="w-full text-sm text-left min-w-[700px]">
                         <thead className="bg-gray-100 sticky top-0 shadow-sm text-gray-700">
-                          <tr><th className="px-4 py-3 w-1/3">Raw Data</th><th className="px-4 py-3 text-right">수량</th><th className="px-4 py-3">매칭 상품</th><th className="px-4 py-3">매칭 옵션</th><th className="px-4 py-3 text-right">단가(원)</th></tr>
+                          <tr><th className="px-4 py-3 w-1/3">Raw Data</th><th className="px-4 py-3 text-right">수량</th><th className="px-4 py-3">매칭 상품</th><th className="px-4 py-3">매칭 옵션</th><th className="px-4 py-3 text-right">판매 금액(원)</th></tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {pendingRawData.map((item, idx) => (
@@ -1353,7 +1353,7 @@ export default function App() {
                           <th className="px-2 sm:px-6 py-3 w-[35%] sm:w-1/4">옵션ID/원본명</th>
                           <th className="px-2 sm:px-4 py-3 w-[30%] sm:w-1/4">매칭 상품<span className="sm:hidden text-gray-400 font-normal">/옵션</span></th>
                           <th className="px-4 py-3 hidden sm:table-cell w-1/4">매칭 옵션</th>
-                          <th className="px-1 sm:px-4 py-3 text-right w-[20%] sm:w-auto">단가</th>
+                          <th className="px-1 sm:px-4 py-3 text-right w-[20%] sm:w-auto">판매 금액</th>
                           <th className="px-1 sm:px-4 py-3 text-center w-[15%] sm:w-24">관리</th>
                         </tr>
                       </thead>
