@@ -836,7 +836,7 @@ export default function App() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Carrot className="text-orange-500" />
-            당근 판매 & 재고 관리 표
+            당근 재고관리 시스템
           </h1>
           <div className="mt-2 flex items-center gap-2 text-xs font-semibold">
             {isDbConnected ? (
@@ -1066,7 +1066,7 @@ export default function App() {
                               <Clock size={16} className="text-red-600 mr-1.5" /> 미정산금 (내가 보관 중인 판매대금)
                             </span>
                             <span className="text-xs text-gray-500 mt-1 block">
-                              누적 판매금({totalSales.toLocaleString()}) - 대표님 송금액({remitted.toLocaleString()})
+                              누적 판매금({totalSales.toLocaleString()}원) - 대표님 송금액({remitted.toLocaleString()}원)
                             </span>
                           </div>
                           <span className="font-black text-xl text-red-600 text-right">
