@@ -1037,48 +1037,54 @@ export default function App() {
 
               {/* 탭 2: 정산 현황 화면 */}
               {summaryTab === 'settlement' && (
-                <div className="flex-1 p-5 bg-white overflow-y-auto">
-                  {/* 입력 영역 */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="flex-1 p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
+                  
+                  {/* 상단 헤더 및 저장 버튼 영역 */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4">
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-800">현금 및 계좌 시재 점검</h2>
+                      <p className="text-xs text-gray-500 mt-1">현재 보유중인 실제 자산을 입력하여 미정산금과 비교해보세요.</p>
+                    </div>
+                    <button 
+                      onClick={handleSaveSettlement} 
+                      disabled={isSettlementSaving}
+                      className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:shadow-none"
+                    >
+                      <Database size={16} className={isSettlementSaving ? "animate-pulse" : ""} /> 
+                      <span>{isSettlementSaving ? "안전하게 저장 중..." : "정산 현황 저장"}</span>
+                    </button>
+                  </div>
+
+                  {/* 1. 자산 입력 영역 (통합된 세련된 카드 스타일) */}
+                  <div className="bg-white border border-gray-200/80 rounded-2xl shadow-sm mb-6 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100 overflow-hidden">
                     {[
-                      { key: 'intermediate', label: '대표님 송금액 (정산금)', desc: '대표님 계좌로 입금 완료한 금액', icon: <Coins size={18} className="text-orange-500 mr-1.5" /> },
-                      { key: 'account', label: '내 계좌 잔액', desc: '현재 내 통장에 있는 금액', icon: <Landmark size={18} className="text-indigo-500 mr-1.5" /> },
-                      { key: 'cash', label: '보유중인 현금', desc: '현재 수중에 있는 현금', icon: <Banknote size={18} className="text-emerald-500 mr-1.5" /> }
+                      { key: 'intermediate', label: '대표님 송금액', desc: '입금 완료한 정산금', icon: <Coins size={20} className="text-orange-500" />, color: 'focus:text-orange-600 focus:border-orange-500' },
+                      { key: 'account', label: '내 계좌 잔액', desc: '현재 통장 잔고', icon: <Landmark size={20} className="text-indigo-500" />, color: 'focus:text-indigo-600 focus:border-indigo-500' },
+                      { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={20} className="text-emerald-500" />, color: 'focus:text-emerald-600 focus:border-emerald-500' }
                     ].map((item) => (
-                      <div key={item.key} className="border border-gray-200 bg-gray-50/50 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="mb-3">
-                          <label className="flex items-center text-sm font-bold text-gray-800">{item.icon}{item.label}</label>
-                          <span className="text-[10px] text-gray-500 block mt-0.5">{item.desc}</span>
+                      <div key={item.key} className="flex-1 p-5 md:p-6 hover:bg-gray-50/50 transition-colors group">
+                        <div className="flex items-center gap-2 mb-1">
+                          {item.icon}
+                          <label className="text-sm font-bold text-gray-800">{item.label}</label>
                         </div>
-                        <div className="flex items-center">
+                        <span className="text-[11px] text-gray-400 block mb-5 ml-7">{item.desc}</span>
+                        <div className="flex items-baseline justify-end relative">
                           <input
                             type="number"
                             inputMode="numeric"
                             pattern="[0-9]*"
                             value={settlementData[item.key] === 0 ? '' : settlementData[item.key]}
                             onChange={(e) => setSettlementData({ ...settlementData, [item.key]: Number(e.target.value) })}
-                            className="w-full text-right font-bold text-lg border-b-2 border-gray-300 focus:border-indigo-500 outline-none bg-transparent py-1 transition-colors"
+                            className={`w-full text-right font-black text-2xl md:text-3xl bg-transparent border-b-2 border-gray-100 outline-none pb-1 transition-all ${item.color} text-gray-800 placeholder:text-gray-200`}
                             placeholder="0"
                           />
-                          <span className="ml-2 font-medium text-gray-600">원</span>
+                          <span className="ml-1.5 font-bold text-gray-400 mb-1">원</span>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* DB 저장 버튼 추가 */}
-                  <div className="flex justify-end mb-6">
-                    <button 
-                      onClick={handleSaveSettlement} 
-                      disabled={isSettlementSaving}
-                      className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400 whitespace-nowrap break-keep"
-                    >
-                      <Database size={16} className="shrink-0 text-gray-300" /> 
-                      <span>{isSettlementSaving ? "저장 중..." : "정산 현황 DB 저장"}</span>
-                    </button>
-                  </div>
-
-                  {/* 자동 계산 영역 */}
+                  {/* 2. 자동 계산 결과 영역 (영수증 형태의 깔끔한 리스트 + 강조된 최종 결과) */}
                   {(() => {
                     const remitted = Number(settlementData.intermediate) || 0; 
                     const inAccount = Number(settlementData.account) || 0;     
@@ -1090,51 +1096,48 @@ export default function App() {
                     const tillDifference = totalAsset - unsettledAmount;
 
                     return (
-                      <div className="flex flex-col gap-3">
-                        {/* 1. 미정산금 박스 */}
-                        <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
-                          <div>
-                            <span className="font-bold text-gray-800 flex items-center text-sm">
-                              <Clock size={16} className="text-red-600 mr-1.5" /> 미정산금 (내가 보관 중인 판매대금)
-                            </span>
-                            <span className="text-xs text-gray-500 mt-1 block">
-                              누적 판매금({totalSales.toLocaleString()}원) - 대표님 송금액({remitted.toLocaleString()}원)
-                            </span>
+                      <div className="bg-white border border-gray-200/80 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                        
+                        {/* 중간 계산 내역 */}
+                        <div className="p-5 md:p-6 flex flex-col gap-2">
+                          <div className="flex justify-between items-center py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-rose-50 rounded-xl"><Clock size={20} className="text-rose-500" /></div>
+                              <div>
+                                <div className="font-bold text-gray-800 text-sm">미정산금 (보관 중인 대금)</div>
+                                <div className="text-[11px] text-gray-500 mt-0.5">누적 판매금({totalSales.toLocaleString()}) - 송금액({remitted.toLocaleString()})</div>
+                              </div>
+                            </div>
+                            <div className="font-black text-lg text-rose-600 text-right">{unsettledAmount.toLocaleString()} 원</div>
                           </div>
-                          <span className="font-black text-xl text-red-600 text-right">
-                            {unsettledAmount.toLocaleString()} 원
-                          </span>
+
+                          <div className="flex justify-between items-center py-3 border-t border-dashed border-gray-200 pt-5">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-indigo-50 rounded-xl"><Wallet size={20} className="text-indigo-500" /></div>
+                              <div>
+                                <div className="font-bold text-gray-800 text-sm">현재 보유 자산</div>
+                                <div className="text-[11px] text-gray-500 mt-0.5">계좌 잔액 + 보유중인 현금</div>
+                              </div>
+                            </div>
+                            <div className="font-black text-lg text-indigo-600 text-right">{totalAsset.toLocaleString()} 원</div>
+                          </div>
                         </div>
 
-                        {/* 2. 보유 자산 박스 */}
-                        <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
+                        {/* 최종 결과 패널 (상태에 따라 배경색 전환) */}
+                        <div className={`p-6 md:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors duration-500 ${tillDifference === 0 ? 'bg-emerald-500' : tillDifference > 0 ? 'bg-blue-500' : 'bg-rose-500'}`}>
                           <div>
-                            <span className="font-bold text-gray-800 flex items-center text-sm">
-                              <Wallet size={16} className="text-indigo-600 mr-1.5" /> 현재 보유 자산
+                            <span className="font-bold text-white/90 flex items-center gap-2 text-sm sm:text-base">
+                              <Scale size={20} /> 최종 시재 (오차 확인)
                             </span>
-                            <span className="text-xs text-gray-500 mt-1 block">
-                              내 계좌 잔액 + 보유중인 현금
+                            <span className="text-[11px] sm:text-xs text-white/70 mt-1.5 block">
+                              {tillDifference === 0 ? '완벽합니다! 계산이 정확히 맞아떨어집니다.' : tillDifference > 0 ? '보유 자산이 미정산금보다 많습니다. (내 수익/잉여금)' : '보유 자산이 부족합니다! (개인 지출 등 오차 확인 필요)'}
                             </span>
                           </div>
-                          <span className="font-black text-xl text-indigo-600 text-right">
-                            {totalAsset.toLocaleString()} 원
-                          </span>
+                          <div className="font-black text-3xl sm:text-4xl text-white text-right tracking-tight mt-2 sm:mt-0 whitespace-nowrap">
+                            {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} <span className="text-lg sm:text-2xl font-bold opacity-80 font-sans">원</span>
+                          </div>
                         </div>
 
-                        {/* 3. 시재 (차액) 박스 */}
-                        <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
-                          <div>
-                            <span className="font-bold text-gray-800 flex items-center text-sm">
-                              <Scale size={16} className={`mr-1.5 ${tillDifference === 0 ? 'text-emerald-600' : tillDifference > 0 ? 'text-blue-600' : 'text-orange-600'}`} /> 시재 (차액)
-                            </span>
-                            <span className="text-xs text-gray-500 mt-1 block">
-                              현재 보유 자산 - 미정산금
-                            </span>
-                          </div>
-                          <span className={`font-black text-xl text-right ${tillDifference === 0 ? 'text-emerald-600' : tillDifference > 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                            {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} 원
-                          </span>
-                        </div>
                       </div>
                     );
                   })()}
