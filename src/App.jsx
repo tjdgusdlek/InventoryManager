@@ -107,7 +107,13 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
         </button>
       </div>
       {isOpen && (
-        <div className={`absolute z-50 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-3 w-64 ${dropdownAlign === 'right' ? 'right-0' : 'left-0'}`}>
+        // 모바일(작은 화면)에서는 화면 오른쪽 끝을 넘어가지 않도록 강제로 오른쪽 정렬(right-0) 하거나, 
+        // 화면 중앙에 위치하도록 조정하는 등 잘림 방지를 위해 위치 값을 덮어씁니다.
+        <div className={`absolute z-50 mt-1 bg-white rounded-lg shadow-2xl border border-gray-200 p-3 w-64 
+          ${dropdownAlign === 'right' ? 'right-0' : 'left-0 sm:left-auto'} 
+          /* 모바일 환경 강제 위치 조정: 기본적으로 우측 정렬을 시도하고, 공간이 부족하면 화면을 벗어나지 않게 max-w 꽉 채움 */
+          max-w-[calc(100vw-2rem)] right-0 sm:right-auto origin-top-right sm:origin-top-left
+        `}>
           <div className="flex justify-between items-center mb-2">
             <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1 hover:bg-gray-100 rounded text-gray-600">&lt;</button>
             <div className="font-bold text-gray-800">{year}년 {month + 1}월</div>
