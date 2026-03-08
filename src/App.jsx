@@ -1327,25 +1327,25 @@ export default function App() {
                         </div>
 
                         {addMode === 'manual' ? (
-                          <form onSubmit={handleAddManualInv} className="flex gap-3 items-end bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
-                            <div className="flex-1">
+                          <form onSubmit={handleAddManualInv} className="grid grid-cols-2 sm:flex gap-3 items-end bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
+                            <div className="col-span-2 sm:flex-1">
                               <label className="block text-xs font-bold text-gray-600 mb-1">상품명</label>
                               <input list="globalProductList" value={manualAddForm.product} onChange={e => setManualAddForm({...manualAddForm, product: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="직접 입력 또는 선택" required />
                             </div>
-                            <div className="flex-1">
+                            <div className="col-span-2 sm:flex-1">
                               <label className="block text-xs font-bold text-gray-600 mb-1">옵션명</label>
                               <input list="globalOptionList" value={manualAddForm.option} onChange={e => setManualAddForm({...manualAddForm, option: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="직접 입력 또는 선택" required />
                             </div>
-                            <div className="w-24">
+                            <div>
                               <label className="block text-xs font-bold text-gray-600 mb-1">수량</label>
-                              <input type="number" min="1" value={manualAddForm.qty} onChange={e => setManualAddForm({...manualAddForm, qty: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right font-bold transition-shadow" required />
+                              <input type="number" inputMode="numeric" pattern="[0-9]*" min="1" value={manualAddForm.qty} onChange={e => setManualAddForm({...manualAddForm, qty: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right font-bold transition-shadow" required />
                             </div>
-                            <div className="w-32">
-                              <label className="block text-xs font-bold text-gray-600 mb-1">판매단가(원)</label>
-                              <input type="number" min="0" value={manualAddForm.sellPrice} onChange={e => setManualAddForm({...manualAddForm, sellPrice: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right transition-shadow" />
+                            <div>
+                              <label className="block text-xs font-bold text-gray-600 mb-1">단가(원)</label>
+                              <input type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={manualAddForm.sellPrice} onChange={e => setManualAddForm({...manualAddForm, sellPrice: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right transition-shadow" />
                             </div>
-                            <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-6 py-2 transition-colors shadow-sm flex items-center justify-center h-[38px] shrink-0">
-                              <Plus size={18} className="mr-1"/> 추가
+                            <button type="submit" className="col-span-2 sm:col-span-1 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-6 py-2.5 sm:py-2 transition-colors shadow-sm flex items-center justify-center sm:h-[38px] shrink-0">
+                              <Plus size={18} className="mr-1"/> <span className="sm:hidden">추가하기</span>
                             </button>
                           </form>
                         ) : (
@@ -1364,12 +1364,12 @@ export default function App() {
                       <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 sticky top-0 shadow-sm text-gray-600 border-b border-gray-200 z-0">
                           <tr>
-                            <th className="px-6 py-4 font-semibold w-[25%] cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 {getSortIcon('product')}</div></th>
-                            <th className="px-6 py-4 font-semibold w-[20%] cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
-                            <th className="px-6 py-4 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('qty')}><div className="flex items-center justify-end gap-1">총 수량 {getSortIcon('qty')}</div></th>
-                            <th className="px-6 py-4 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('sellPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('sellPrice')}</div></th>
-                            <th className="px-6 py-4 font-semibold text-center w-28 whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은수량 {getSortIcon('remainQty')}</div></th>
-                            <th className="px-6 py-4 font-semibold text-center w-24 whitespace-nowrap">관리</th>
+                            <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold w-auto sm:w-[25%] cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 <span className="sm:hidden text-[10px] font-normal text-gray-400 ml-1">/ 정보</span> {getSortIcon('product')}</div></th>
+                            <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold w-[20%] cursor-pointer hover:bg-gray-100 select-none transition-colors hidden sm:table-cell" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
+                            <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors hidden sm:table-cell" onClick={() => requestSort('qty')}><div className="flex items-center justify-end gap-1">총 수량 {getSortIcon('qty')}</div></th>
+                            <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('sellPrice')}><div className="flex items-center justify-end gap-1">단가 {getSortIcon('sellPrice')}</div></th>
+                            <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold text-center w-20 sm:w-28 whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은수량 {getSortIcon('remainQty')}</div></th>
+                            <th className="px-2 sm:px-6 py-3 sm:py-4 font-semibold text-center w-16 sm:w-24 whitespace-nowrap">관리</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -1378,21 +1378,28 @@ export default function App() {
                           ) : (
                             processedInventory.map((item) => {
                               if (editingInvId === item.id) {
+                                // ... (수정 폼 렌더링은 기존 코드 유지)
                                 return (
-                                  <tr key={item.id} className="bg-yellow-50/50">
-                                    <td className="px-4 py-2"><input type="text" value={invEditForm.product} onChange={e => setInvEditForm({...invEditForm, product: e.target.value})} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-orange-500 font-bold" /></td>
-                                    <td className="px-4 py-2"><input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-orange-500" /></td>
-                                    <td className="px-4 py-2 text-right"><input type="number" value={invEditForm.qty} min="0" onChange={e => setInvEditForm({...invEditForm, qty: e.target.value})} className="w-20 border border-gray-300 rounded px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-orange-500 text-right font-bold" /></td>
-                                    <td className="px-4 py-2 text-right"><input type="number" value={invEditForm.sellPrice} min="0" onChange={e => setInvEditForm({...invEditForm, sellPrice: e.target.value})} className="w-24 border border-gray-300 rounded px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-orange-500 text-right" /></td>
-                                    <td className="px-4 py-2 text-center text-gray-400 text-xs">자동 계산</td>
-                                    <td className="px-4 py-2 text-center">
-                                      <div className="flex justify-center items-center gap-1">
-                                        <button onClick={saveInvEdit} className="text-emerald-600 hover:bg-emerald-100 p-1.5 rounded transition-colors" title="저장"><Check size={16} /></button>
-                                        <button onClick={cancelInvEdit} className="text-red-500 hover:bg-red-100 p-1.5 rounded transition-colors" title="취소"><X size={16} /></button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
+                                <tr key={item.id} className="hover:bg-orange-50/40 group transition-colors">
+                                  <td className="px-4 sm:px-6 py-3 sm:py-3.5 whitespace-nowrap">
+                                    <div className="font-bold text-gray-800 leading-tight">{item.product}</div>
+                                    <div className="text-[11px] text-gray-500 mt-0.5 sm:hidden">{item.option}</div>
+                                    <div className="text-[10px] text-gray-400 sm:hidden">총 {item.qty}개</div>
+                                  </td>
+                                  <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-gray-600 break-keep hidden sm:table-cell">{item.option}</td>
+                                  <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-right font-semibold text-gray-900 hidden sm:table-cell">{item.qty}</td>
+                                  <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-right font-medium text-gray-600">{item.sellPrice.toLocaleString()}원</td>
+                                  <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-center">
+                                    <span className={`inline-flex items-center justify-center px-2 py-1 rounded font-bold ${item.remainQty === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{item.remainQty}</span>
+                                  </td>
+                                  <td className="px-2 sm:px-6 py-3 sm:py-3.5 text-center">
+                                    <div className="flex justify-center items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button onClick={() => startInvEdit(item)} className="text-gray-400 hover:text-orange-600 p-1.5 rounded hover:bg-orange-50 transition-colors" title="재고 수정"><Edit2 size={16} /></button>
+                                      <button onClick={() => handleDeleteInv(item.id)} className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors" title="품목 삭제"><Trash2 size={16} /></button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
                               }
                               return (
                                 <tr key={item.id} className="hover:bg-orange-50/40 group transition-colors">
@@ -1575,13 +1582,14 @@ export default function App() {
                   <table className="w-full text-sm text-left">
                     <thead className="bg-gray-50 sticky top-0 shadow-sm text-gray-600 border-b border-gray-200">
                       <tr>
-                        <th className="px-6 py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => requestSort('date')}><div className="flex items-center gap-1">판매일 {getSortIcon('date')}</div></th>
-                        <th className="px-6 py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none w-[22%] transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 {getSortIcon('product')}</div></th>
-                        <th className="px-6 py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none w-[16%] transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
-                        <th className="px-6 py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none text-right transition-colors" onClick={() => requestSort('quantity')}><div className="flex items-center justify-end gap-1">수량 {getSortIcon('quantity')}</div></th>
-                        <th className="px-6 py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none text-right transition-colors" onClick={() => requestSort('totalPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('totalPrice')}</div></th>
-                        <th className="px-6 py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none w-[28%] transition-colors" onClick={() => requestSort('note')}><div className="flex items-center gap-1">비고 {getSortIcon('note')}</div></th>
-                        <th className="px-6 py-4 font-semibold text-center w-24 whitespace-nowrap">관리</th>
+                        {/* 판매일, 옵션, 비고는 PC에서만 노출 (hidden sm:table-cell) */}
+                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors hidden sm:table-cell" onClick={() => requestSort('date')}><div className="flex items-center gap-1">판매일 {getSortIcon('date')}</div></th>
+                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none w-auto sm:w-[22%] transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 <span className="sm:hidden text-[10px] font-normal text-gray-400 ml-1">/ 정보</span> {getSortIcon('product')}</div></th>
+                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none w-[16%] transition-colors hidden sm:table-cell" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
+                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none text-right transition-colors" onClick={() => requestSort('quantity')}><div className="flex items-center justify-end gap-1">수량 {getSortIcon('quantity')}</div></th>
+                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none text-right transition-colors" onClick={() => requestSort('totalPrice')}><div className="flex items-center justify-end gap-1">금액 {getSortIcon('totalPrice')}</div></th>
+                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none w-[28%] transition-colors hidden sm:table-cell" onClick={() => requestSort('note')}><div className="flex items-center gap-1">비고 {getSortIcon('note')}</div></th>
+                        <th className="px-2 sm:px-6 py-3 sm:py-4 font-semibold text-center w-16 sm:w-24 whitespace-nowrap">관리</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -1590,19 +1598,30 @@ export default function App() {
                       ) : (
                         modalDetailedData.map((sale) => {
                           if (editingSaleId === sale.id) {
+                            // ... (수정 폼 렌더링은 기존 코드 유지)
                             return (
-                              <tr key={sale.id} className="bg-yellow-50/50">
-                                <td className="px-4 py-2"><div className="flex items-center border border-gray-300 rounded bg-white pr-1 transition-colors focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500"><CustomDatePicker startDate={editForm.date} onChange={(start) => setEditForm({...editForm, date: start})} wrapperClassName="w-full" className="w-full pl-2 py-1 text-sm bg-transparent outline-none whitespace-nowrap" isRangeMode={false} /></div></td>
-                                <td className="px-4 py-2"><select value={editForm.product} onChange={e => setEditForm({...editForm, product: e.target.value, option: '', price: 0})} className="w-full border border-gray-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500"><option value="">선택</option>{uniqueProducts.map(p => <option key={p} value={p}>{p}</option>)}</select></td>
-                                <td className="px-4 py-2"><select value={editForm.option} onChange={e => { const opt = inventoryData.find(i => i.product === editForm.product && i.option === e.target.value); setEditForm({...editForm, option: e.target.value, price: opt ? opt.sellPrice : 0}); }} className="w-full border border-gray-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500"><option value="">선택</option>{inventoryData.filter(i => i.product === editForm.product).map(o => <option key={o.id} value={o.option}>{o.option}</option>)}</select></td>
-                                <td className="px-4 py-2 text-right"><input type="number" value={editForm.quantity} min="1" onChange={e => setEditForm({...editForm, quantity: e.target.value})} className="w-14 border border-gray-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 text-right" /></td>
-                                <td className="px-4 py-2 text-right"><input type="number" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-20 border border-gray-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 text-right" /></td>
-                                <td className="px-4 py-2"><input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full border border-gray-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="비고" /></td>
-                                <td className="px-4 py-2 text-center">
-                                   <div className="flex justify-center items-center gap-1"><button onClick={saveEdit} className="text-emerald-600 hover:bg-emerald-100 p-1.5 rounded transition-colors" title="저장"><Check size={16} /></button><button onClick={cancelEdit} className="text-red-500 hover:bg-red-100 p-1.5 rounded transition-colors" title="취소"><X size={16} /></button></div>
-                                </td>
-                              </tr>
-                            );
+                            <tr key={sale.id} className={`group transition-colors ${maximizedView === 'period' ? 'hover:bg-emerald-50/40' : 'hover:bg-blue-50/40'}`}>
+                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-gray-600 font-medium whitespace-nowrap hidden sm:table-cell">{sale.date}</td>
+                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 whitespace-nowrap">
+                                <div className="font-bold text-gray-800 leading-tight">{sale.product}</div>
+                                {/* 모바일에서만 날짜, 옵션, 비고를 상품명 아래에 작게 모아서 표시 */}
+                                <div className="text-[11px] text-gray-500 mt-0.5 sm:hidden">
+                                  <span className="text-blue-500 font-medium">{sale.date.substring(5)}</span> | {sale.option}
+                                </div>
+                                <div className="text-[10px] text-gray-400 mt-0.5 sm:hidden truncate max-w-[150px]">{sale.note}</div>
+                              </td>
+                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-gray-600 whitespace-nowrap hidden sm:table-cell">{sale.option}</td>
+                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-right font-semibold text-gray-900">{sale.quantity}</td>
+                              <td className={`px-4 sm:px-6 py-3 sm:py-3.5 text-right font-bold whitespace-nowrap ${maximizedView === 'period' ? 'text-emerald-600' : 'text-blue-600'}`}>{sale.totalPrice.toLocaleString()}원</td>
+                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-gray-500 text-sm break-all hidden sm:table-cell">{sale.note || '-'}</td>
+                              <td className="px-2 sm:px-6 py-3 sm:py-3.5 text-center">
+                                <div className="flex justify-center items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => startEdit(sale)} className="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition-colors" title="내역 수정"><Edit2 size={16} /></button>
+                                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors" title="내역 삭제"><Trash2 size={16} /></button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
                           }
                           return (
                             <tr key={sale.id} className={`group transition-colors ${maximizedView === 'period' ? 'hover:bg-emerald-50/40' : 'hover:bg-blue-50/40'}`}>
