@@ -1616,101 +1616,94 @@ export default function App() {
                 )}
               </div>
             ) : (
-              <>
-                <div className="px-6 py-3 bg-white border-b border-gray-100 flex items-center gap-4 shrink-0 shadow-sm z-10">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-semibold text-gray-600">상품명 검색</label>
-                    <div className="relative"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" /><input type="text" value={searchProduct} onChange={(e) => setSearchProduct(e.target.value)} placeholder="상품명 입력..." className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all w-40 sm:w-48" /></div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-semibold text-gray-600">옵션명 검색</label>
-                    <div className="relative"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" /><input type="text" value={searchOption} onChange={(e) => setSearchOption(e.target.value)} placeholder="옵션명 입력..." className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all w-40 sm:w-48" /></div>
-                  </div>
-                  {(searchProduct || searchOption) && <button onClick={() => { setSearchProduct(''); setSearchOption(''); }} className="text-xs text-gray-500 hover:text-gray-800 underline ml-auto font-medium">필터 초기화</button>}
-                </div>
+              <div className="flex-1 flex flex-col overflow-hidden bg-white">
+                 <div className="px-4 sm:px-6 py-3 bg-white border-b border-gray-100 flex flex-col sm:flex-row gap-3 justify-between items-center shrink-0 shadow-sm z-10">
+                   <div className="flex w-full sm:w-auto gap-2">
+                     <div className="relative flex-1 sm:w-40">
+                       <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"/>
+                       <input type="text" value={searchProduct} onChange={e => setSearchProduct(e.target.value)} placeholder="상품명 검색" className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-md text-xs outline-none focus:ring-2 focus:ring-blue-500/50"/>
+                     </div>
+                     <div className="relative flex-1 sm:w-40">
+                       <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"/>
+                       <input type="text" value={searchOption} onChange={e => setSearchOption(e.target.value)} placeholder="옵션명 검색" className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-md text-xs outline-none focus:ring-2 focus:ring-blue-500/50"/>
+                     </div>
+                   </div>
+                   {(searchProduct || searchOption) && (
+                     <button onClick={() => { setSearchProduct(''); setSearchOption(''); }} className="text-xs text-gray-500 hover:text-gray-800 underline whitespace-nowrap sm:ml-auto w-full sm:w-auto text-right sm:text-left">
+                       필터 초기화
+                     </button>
+                   )}
+                 </div>
 
-                <div className="flex-1 overflow-y-auto bg-white p-0 relative">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 sticky top-0 shadow-sm text-gray-600 border-b border-gray-200">
-                      <tr>
-                        {/* 판매일, 옵션, 비고는 PC에서만 노출 (hidden sm:table-cell) */}
-                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none transition-colors hidden sm:table-cell" onClick={() => requestSort('date')}><div className="flex items-center gap-1">판매일 {getSortIcon('date')}</div></th>
-                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none w-auto sm:w-[22%] transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 <span className="sm:hidden text-[10px] font-normal text-gray-400 ml-1">/ 정보</span> {getSortIcon('product')}</div></th>
-                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none w-[16%] transition-colors hidden sm:table-cell" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
-                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none text-right transition-colors" onClick={() => requestSort('quantity')}><div className="flex items-center justify-end gap-1">수량 {getSortIcon('quantity')}</div></th>
-                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none text-right transition-colors" onClick={() => requestSort('totalPrice')}><div className="flex items-center justify-end gap-1">금액 {getSortIcon('totalPrice')}</div></th>
-                        <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none w-[28%] transition-colors hidden sm:table-cell" onClick={() => requestSort('note')}><div className="flex items-center gap-1">비고 {getSortIcon('note')}</div></th>
-                        <th className="px-2 sm:px-6 py-3 sm:py-4 font-semibold text-center w-16 sm:w-24 whitespace-nowrap">관리</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {modalDetailedData.length === 0 ? (
-                        <tr><td colSpan="7" className="text-center text-gray-400 py-20 text-base">해당 조건의 판매 내역이 없습니다.</td></tr>
-                      ) : (
-                        modalDetailedData.map((sale) => {
-                          if (editingSaleId === sale.id) {
-                            // ... (수정 폼 렌더링은 기존 코드 유지)
+                 <div className="flex-1 overflow-x-auto overflow-y-auto bg-white p-0 relative">
+                   <table className="w-full text-sm text-left table-fixed min-w-[320px] sm:min-w-[700px]">
+                     <thead className="bg-gray-50 sticky top-0 shadow-sm font-bold text-gray-600 z-10 border-b border-gray-200">
+                       <tr>
+                         <th className="px-3 sm:px-4 py-3 cursor-pointer hidden sm:table-cell sm:w-[15%]" onClick={() => requestSort('date')}><div className="flex items-center gap-1 text-[11px] sm:text-sm">판매일 {getSortIcon('date')}</div></th>
+                         <th className="px-3 sm:px-4 py-3 cursor-pointer w-[45%] sm:w-[22%]" onClick={() => requestSort('product')}><div className="flex items-center gap-1 text-[11px] sm:text-sm">상품/정보 {getSortIcon('product')}</div></th>
+                         <th className="px-3 sm:px-4 py-3 cursor-pointer hidden sm:table-cell sm:w-[15%]" onClick={() => requestSort('option')}><div className="flex items-center gap-1 text-[11px] sm:text-sm">옵션명 {getSortIcon('option')}</div></th>
+                         <th className="px-1 sm:px-4 py-3 text-center cursor-pointer w-[15%] sm:w-[10%]" onClick={() => requestSort('quantity')}><div className="flex justify-center gap-1 text-[11px] sm:text-sm">수량 {getSortIcon('quantity')}</div></th>
+                         <th className="px-1 sm:px-4 py-3 text-right cursor-pointer w-[20%] sm:w-[14%]" onClick={() => requestSort('totalPrice')}><div className="flex justify-end gap-1 text-[11px] sm:text-sm">금액 {getSortIcon('totalPrice')}</div></th>
+                         <th className="px-4 py-3 hidden sm:table-cell sm:w-[14%]"><div className="flex items-center gap-1 text-[11px] sm:text-sm">비고</div></th>
+                         <th className="px-2 py-3 text-center w-[20%] sm:w-[10%] text-[11px] sm:text-sm">관리</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-100">
+                       {modalDetailedData.length === 0 ? (
+                         <tr><td colSpan="7" className="text-center text-gray-400 py-10 sm:py-20 text-sm">해당 조건의 판매 내역이 없습니다.</td></tr>
+                       ) : (
+                         modalDetailedData.map(s => {
+                            if (editingSaleId === s.id) {
+                              return (
+                                <tr key={s.id} className="bg-yellow-50/50">
+                                  <td className="px-1 py-1 hidden sm:table-cell"><CustomDatePicker startDate={editForm.date} onChange={(start) => setEditForm({...editForm, date: start})} className="border px-1 py-1 text-xs bg-white" isRangeMode={false} /></td>
+                                  <td className="px-1 sm:px-2 py-1"><input type="text" value={editForm.product} onChange={e => setEditForm({...editForm, product: e.target.value})} className="w-full border px-1 py-1 text-xs font-bold" /></td>
+                                  <td className="px-1 py-1 hidden sm:table-cell"><input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full border px-1 py-1 text-xs" /></td>
+                                  <td className="px-1 py-1 text-center"><input type="number" inputMode="numeric" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} className="w-full sm:w-12 border px-1 py-1 text-xs text-center font-bold" /></td>
+                                  <td className="px-1 py-1 text-right"><input type="number" inputMode="numeric" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full border px-1 py-1 text-xs text-right" /></td>
+                                  <td className="px-1 py-1 hidden sm:table-cell"><input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full border px-1 py-1 text-xs" /></td>
+                                  <td className="px-1 py-1 text-center"><div className="flex justify-center gap-1 sm:gap-2"><button onClick={saveEdit} className="text-emerald-600 bg-emerald-50 p-1 sm:p-1.5 rounded border border-emerald-200"><Check size={14}/></button><button onClick={cancelEdit} className="text-red-500 bg-red-50 p-1 sm:p-1.5 rounded border border-red-200"><X size={14}/></button></div></td>
+                                </tr>
+                              );
+                            }
                             return (
-                            <tr key={sale.id} className={`group transition-colors ${maximizedView === 'period' ? 'hover:bg-emerald-50/40' : 'hover:bg-blue-50/40'}`}>
-                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-gray-600 font-medium whitespace-nowrap hidden sm:table-cell">{sale.date}</td>
-                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 whitespace-nowrap">
-                                <div className="font-bold text-gray-800 leading-tight">{sale.product}</div>
-                                {/* 모바일에서만 날짜, 옵션, 비고를 상품명 아래에 작게 모아서 표시 */}
-                                <div className="text-[11px] text-gray-500 mt-0.5 sm:hidden">
-                                  <span className="text-blue-500 font-medium">{sale.date.substring(5)}</span> | {sale.option}
-                                </div>
-                                <div className="text-[10px] text-gray-400 mt-0.5 sm:hidden truncate max-w-[150px]">{sale.note}</div>
-                              </td>
-                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-gray-600 whitespace-nowrap hidden sm:table-cell">{sale.option}</td>
-                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-right font-semibold text-gray-900">{sale.quantity}</td>
-                              <td className={`px-4 sm:px-6 py-3 sm:py-3.5 text-right font-bold whitespace-nowrap ${maximizedView === 'period' ? 'text-emerald-600' : 'text-blue-600'}`}>{sale.totalPrice.toLocaleString()}원</td>
-                              <td className="px-4 sm:px-6 py-3 sm:py-3.5 text-gray-500 text-sm break-all hidden sm:table-cell">{sale.note || '-'}</td>
-                              <td className="px-2 sm:px-6 py-3 sm:py-3.5 text-center">
-                                <div className="flex justify-center items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => startEdit(sale)} className="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition-colors" title="내역 수정"><Edit2 size={16} /></button>
-                                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors" title="내역 삭제"><Trash2 size={16} /></button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                          }
-                          return (
-                            <tr key={sale.id} className={`group transition-colors ${maximizedView === 'period' ? 'hover:bg-emerald-50/40' : 'hover:bg-blue-50/40'}`}>
-                              <td className="px-6 py-3.5 text-gray-600 font-medium whitespace-nowrap">{sale.date}</td>
-                              <td className="px-6 py-3.5 font-bold text-gray-800 whitespace-nowrap">{sale.product}</td>
-                              <td className="px-6 py-3.5 text-gray-600 whitespace-nowrap">{sale.option}</td>
-                              <td className="px-6 py-3.5 text-right font-semibold text-gray-900">{sale.quantity}</td>
-                              <td className={`px-6 py-3.5 text-right font-bold whitespace-nowrap ${maximizedView === 'period' ? 'text-emerald-600' : 'text-blue-600'}`}>{sale.totalPrice.toLocaleString()}원</td>
-                              <td className="px-6 py-3.5 text-gray-500 text-sm break-all">{sale.note || '-'}</td>
-                              <td className="px-6 py-3.5 text-center">
-                                <div className="flex justify-center items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => startEdit(sale)} className="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition-colors" title="내역 수정"><Edit2 size={16} /></button>
-                                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors" title="내역 삭제"><Trash2 size={16} /></button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {(() => {
-                  const totalQty = modalDetailedData.reduce((acc, curr) => acc + curr.quantity, 0);
-                  const totalAmount = modalDetailedData.reduce((acc, curr) => acc + curr.totalPrice, 0);
-                  const avgPrice = totalQty > 0 ? Math.round(totalAmount / totalQty) : 0;
-                  return (
-                    <div className={`px-6 py-4 border-t flex justify-between items-center ${maximizedView === 'period' ? 'bg-emerald-50/50 text-emerald-900' : 'bg-blue-50/50 text-blue-900'}`}>
-                      <div className="font-medium text-sm md:text-base"><span className="opacity-80">개당 평균 판매가:</span> <span className="font-bold text-lg">{avgPrice.toLocaleString()}원</span></div>
-                      <div className="flex gap-5 md:gap-8 text-sm md:text-base items-center">
-                        <div>총 수량: <span className="font-bold text-lg md:text-xl">{totalQty}개</span></div>
-                        <div>총 금액: <span className="font-bold text-lg md:text-xl">{totalAmount.toLocaleString()}원</span></div>
+                              <tr key={s.id} className={`group transition-colors ${maximizedView === 'period' ? 'hover:bg-emerald-50/40' : 'hover:bg-blue-50/40'}`}>
+                                <td className="px-3 sm:px-4 py-2.5 sm:py-3.5 text-gray-500 text-xs hidden sm:table-cell">{s.date}</td>
+                                <td className="px-3 sm:px-4 py-2.5 sm:py-3.5">
+                                  <div className="font-bold text-gray-800 text-xs sm:text-sm leading-tight break-keep">{s.product}</div>
+                                  <div className="text-[10px] text-gray-500 mt-1 sm:hidden truncate"><span className="text-blue-500 font-medium">{s.date.substring(5)}</span> | {s.option}</div>
+                                </td>
+                                <td className="px-3 sm:px-4 py-2.5 sm:py-3.5 text-gray-600 text-xs sm:text-sm break-keep hidden sm:table-cell">{s.option}</td>
+                                <td className="px-1 sm:px-4 py-2.5 sm:py-3.5 text-center font-semibold text-gray-900 text-xs sm:text-sm">{s.quantity}</td>
+                                <td className={`px-1 sm:px-4 py-2.5 sm:py-3.5 text-right font-bold whitespace-nowrap text-xs sm:text-sm ${maximizedView === 'period' ? 'text-emerald-600' : 'text-blue-600'}`}>{s.totalPrice.toLocaleString()}</td>
+                                <td className="px-3 sm:px-4 py-2.5 sm:py-3.5 text-gray-500 text-[11px] sm:text-xs truncate hidden sm:table-cell" title={s.note}>{s.note || '-'}</td>
+                                <td className="px-2 py-2.5 sm:py-3.5 text-center">
+                                  <div className="flex justify-center items-center gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => startEdit(s)} className="text-gray-500 hover:text-blue-600 bg-gray-100 p-1.5 rounded-md border border-gray-200 shadow-sm" title="수정"><Edit2 size={12}/></button>
+                                    <button onClick={() => handleDeleteSale(s.id)} className="text-gray-500 hover:text-red-600 bg-gray-100 p-1.5 rounded-md border border-gray-200 shadow-sm" title="삭제"><Trash2 size={12}/></button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                         })
+                       )}
+                     </tbody>
+                   </table>
+                 </div>
+                 
+                 {(() => {
+                    const tQ = modalDetailedData.reduce((a, c) => a + c.quantity, 0); const tA = modalDetailedData.reduce((a, c) => a + c.totalPrice, 0);
+                    return (
+                      <div className={`px-4 sm:px-6 py-3 border-t flex flex-col sm:flex-row justify-between items-center ${maximizedView === 'period' ? 'bg-emerald-50/50' : 'bg-blue-50/50'} shrink-0 gap-2 sm:gap-0`}>
+                        <div className="text-[11px] sm:text-sm font-medium"><span className="opacity-80">개당 평균 판매가:</span> <span className="font-bold">{tQ > 0 ? Math.round(tA/tQ).toLocaleString() : 0}원</span></div>
+                        <div className="flex gap-6 sm:gap-8 text-xs sm:text-sm items-center">
+                          <div>총 수량: <span className="font-bold text-sm sm:text-base">{tQ}개</span></div>
+                          <div>총 금액: <span className="font-bold text-sm sm:text-base">{tA.toLocaleString()}원</span></div>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })()}
-              </>
+                    );
+                 })()}
+              </div>
             )}
           </div>
         </div>
