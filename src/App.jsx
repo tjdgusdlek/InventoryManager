@@ -803,6 +803,8 @@ export default function App() {
                 key={index}
                 ref={(el) => (pinRefs.current[index] = el)}
                 type="password"
+                inputMode="numeric"     /* 모바일 숫자 키패드 강제 호출 */
+                pattern="[0-9]*"
                 maxLength={1}
                 value={pinDigits[index]}
                 onChange={(e) => handlePinChange(index, e.target.value)}
@@ -939,25 +941,27 @@ export default function App() {
 
               {summaryTab === 'sales' && (
                 <>
-                  <div className="grid grid-cols-5 divide-x divide-gray-200 border-b border-gray-100 text-center bg-white shrink-0">
-                    <div className="p-3 md:p-4">
-                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">오늘 총 판매 수량</div>
+                  {/* 모바일에서는 2칸씩(grid-cols-2), PC에서는 5칸(md:grid-cols-5)으로 변경 */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 border-b border-gray-100 text-center bg-white shrink-0">
+                    <div className="p-3 md:p-4 border-r border-b md:border-b-0 border-gray-200 flex flex-col justify-center">
+                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1 break-keep">오늘 수량</div>
                       <div className="font-bold text-emerald-600 text-base lg:text-lg">{todayTotalQty}개</div>
                     </div>
-                    <div className="p-3 md:p-4">
-                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">오늘 총 판매 금액</div>
+                    <div className="p-3 md:p-4 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col justify-center">
+                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1 break-keep">오늘 금액</div>
                       <div className="font-bold text-emerald-600 text-base lg:text-lg">{todayTotalAmount.toLocaleString()}원</div>
                     </div>
-                    <div className="p-3 md:p-4 bg-gray-50/30">
-                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">누적 판매 수량</div>
+                    <div className="p-3 md:p-4 bg-gray-50/30 border-r border-b md:border-b-0 border-gray-200 flex flex-col justify-center">
+                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1 break-keep">누적 수량</div>
                       <div className="font-bold text-blue-600 text-base lg:text-lg">{totalSalesSummary.totalQty}개</div>
                     </div>
-                    <div className="p-3 md:p-4 bg-gray-50/30">
-                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1">누적 판매 금액</div>
+                    <div className="p-3 md:p-4 bg-gray-50/30 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col justify-center">
+                      <div className="text-[11px] md:text-xs font-medium text-gray-500 mb-1 break-keep">누적 금액</div>
                       <div className="font-bold text-blue-600 text-base lg:text-lg">{totalSalesSummary.totalAmount.toLocaleString()}원</div>
                     </div>
-                    <div className="p-3 md:p-4 bg-orange-50/30">
-                      <div className="text-[11px] md:text-xs font-medium text-orange-600 mb-1">남은 재고</div>
+                    {/* 모바일에서는 남은 재고가 전체 너비를 차지하도록(col-span-2) 설정 */}
+                    <div className="p-3 md:p-4 bg-orange-50/30 col-span-2 md:col-span-1 flex flex-col justify-center">
+                      <div className="text-[11px] md:text-xs font-medium text-orange-600 mb-1 break-keep">남은 재고</div>
                       <div className="font-bold text-orange-600 text-base lg:text-lg">{totalRemainQty}개</div>
                     </div>
                   </div>
@@ -1217,8 +1221,10 @@ export default function App() {
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-orange-700 bg-orange-50/50 sticky top-0 shadow-sm">
                     <tr>
-                      <th className="px-4 py-3 font-medium whitespace-nowrap">상품명</th>
-                      <th className="px-4 py-3 font-medium whitespace-nowrap">옵션명</th>
+                      {/* 모바일일 때 상품명 옆에 '/ 옵션' 안내글 추가 */}
+                      <th className="px-4 py-3 font-medium whitespace-nowrap">상품명 <span className="md:hidden text-[10px] font-normal text-orange-600/80 ml-1">/ 옵션</span></th>
+                      {/* 옵션명 헤더는 PC(md 이상)에서만 보임 */}
+                      <th className="px-4 py-3 font-medium whitespace-nowrap hidden md:table-cell">옵션명</th>
                       <th className="px-4 py-3 font-medium text-center whitespace-nowrap">총 수량</th>
                       <th className="px-4 py-3 font-medium text-center whitespace-nowrap">남은 수량</th>
                     </tr>
@@ -1226,8 +1232,13 @@ export default function App() {
                   <tbody className="divide-y divide-gray-100">
                     {currentInventory.map((item) => (
                       <tr key={item.id} className="hover:bg-orange-50/50 transition-colors">
-                        <td className="px-4 py-2 font-medium text-gray-800 whitespace-nowrap">{item.product}</td>
-                        <td className="px-4 py-2 text-gray-600 whitespace-nowrap text-xs">{item.option}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="font-medium text-gray-800 leading-tight">{item.product}</div>
+                          {/* 모바일에서만 상품명 밑에 옵션명이 작게 나타남 */}
+                          <div className="text-[11px] text-gray-500 mt-0.5 md:hidden">{item.option}</div>
+                        </td>
+                        {/* PC에서만 보이던 옵션명 칸 */}
+                        <td className="px-4 py-2 text-gray-600 whitespace-nowrap text-xs hidden md:table-cell">{item.option}</td>
                         <td className="px-4 py-2 text-center text-gray-500">{item.qty}</td>
                         <td className="px-4 py-2 text-center">
                           <span className={`inline-flex items-center justify-center px-2 py-1 rounded font-bold ${item.remainQty === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{item.remainQty}</span>
