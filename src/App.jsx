@@ -815,7 +815,7 @@ export default function App() {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">단가 (원)</label>
-                      <input type="number" inputMode="numeric" pattern="[0-9]*" name="price" value={formData.price} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition text-right" required />
+                      <input type="text" inputMode="numeric" name="price" value={formData.price === 0 ? '' : Number(formData.price).toLocaleString()} onChange={(e) => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'price', value: Number(rawValue) } }); }} className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition text-right" placeholder="0" required />
                     </div>
                   </div>
                   <div className="md:col-span-2">
@@ -1215,7 +1215,7 @@ export default function App() {
                             </div>
                             <div>
                               <label className="block text-xs font-bold text-gray-600 mb-1">단가(원)</label>
-                              <input type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={manualAddForm.sellPrice} onChange={e => setManualAddForm({...manualAddForm, sellPrice: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right transition-shadow" />
+                              <input type="text" inputMode="numeric" value={manualAddForm.sellPrice === 0 ? '' : Number(manualAddForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setManualAddForm({...manualAddForm, sellPrice: Number(rawValue)}); }} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none text-right transition-shadow" placeholder="0" />
                             </div>
                             <button type="submit" className="col-span-2 sm:col-span-1 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-6 py-2.5 sm:py-2 transition-colors shadow-sm flex items-center justify-center sm:h-[38px] shrink-0">
                               <Plus size={18} className="mr-1"/> <span className="sm:hidden">추가하기</span>
@@ -1262,11 +1262,11 @@ export default function App() {
                                       <input type="text" value={invEditForm.product} onChange={e => setInvEditForm({...invEditForm, product: e.target.value})} className="w-full border rounded px-1 sm:px-2 py-1 text-xs sm:text-sm font-bold" />
                                       {/* 모바일에서는 옵션과 단가 입력을 상품명 아래에 표시 */}
                                       <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full border rounded px-1 py-1 text-xs mt-1 sm:hidden" placeholder="옵션명" />
-                                      <input type="number" inputMode="numeric" pattern="[0-9]*" value={invEditForm.sellPrice} onChange={e => setInvEditForm({...invEditForm, sellPrice: e.target.value})} className="w-full border rounded px-1 py-1 text-xs mt-1 sm:hidden" placeholder="단가" />
+                                      <input type="text" inputMode="numeric" value={invEditForm.sellPrice === 0 ? '' : Number(invEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(rawValue)}); }} className="w-full border rounded px-1 py-1 text-xs mt-1 sm:hidden text-right" placeholder="단가" />
                                     </td>
                                     <td className="px-2 sm:px-4 py-2 hidden sm:table-cell"><input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full border rounded px-1 sm:px-2 py-1 text-xs sm:text-sm" /></td>
                                     <td className="px-1 sm:px-4 py-2 text-center"><input type="number" inputMode="numeric" pattern="[0-9]*" value={invEditForm.qty} min="0" onChange={e => setInvEditForm({...invEditForm, qty: e.target.value})} className="w-12 sm:w-16 border rounded px-1 py-1 text-xs text-center font-bold mx-auto" /></td>
-                                    <td className="px-2 sm:px-4 py-2 text-right hidden sm:table-cell"><input type="number" inputMode="numeric" pattern="[0-9]*" value={invEditForm.sellPrice} min="0" onChange={e => setInvEditForm({...invEditForm, sellPrice: e.target.value})} className="w-20 border rounded px-1 py-1 text-xs text-right ml-auto" /></td>
+                                    <td className="px-2 sm:px-4 py-2 text-right hidden sm:table-cell"><input type="text" inputMode="numeric" value={invEditForm.sellPrice === 0 ? '' : Number(invEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(rawValue)}); }} className="w-20 border rounded px-1 py-1 text-xs text-right ml-auto" placeholder="0" /></td>
                                     <td className="px-1 sm:px-4 py-2 text-center text-gray-400 text-[10px] sm:text-xs">자동계산</td>
                                     <td className="px-1 sm:px-4 py-2 text-center">
                                       <div className="flex justify-center items-center gap-1 sm:gap-2"><button onClick={saveInvEdit} className="text-emerald-600 bg-emerald-50 p-1 sm:p-1.5 rounded border border-emerald-200 shadow-sm"><Check size={14} /></button><button onClick={cancelInvEdit} className="text-red-500 bg-red-50 p-1 sm:p-1.5 rounded border border-red-200 shadow-sm"><X size={14} /></button></div>
@@ -1381,7 +1381,7 @@ export default function App() {
                                       <input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full border rounded px-1 sm:px-2 py-1 text-[11px] sm:text-xs sm:hidden" placeholder="옵션명" />
                                     </td>
                                     <td className="px-2 py-2 hidden sm:table-cell"><input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full border rounded px-2 py-1 text-xs" /></td>
-                                    <td className="px-1 sm:px-2 py-2 text-right"><input type="number" inputMode="numeric" value={mapEditForm.sellPrice} onChange={e => setMapEditForm({...mapEditForm, sellPrice: e.target.value})} className="w-full sm:w-20 min-w-[50px] border rounded px-1 sm:px-2 py-1 text-[11px] sm:text-xs text-right font-bold" /></td>
+                                    <td className="px-1 sm:px-2 py-2 text-right"><input type="text" inputMode="numeric" value={mapEditForm.sellPrice === 0 ? '' : Number(mapEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setMapEditForm({...mapEditForm, sellPrice: Number(rawValue)}); }} className="w-full sm:w-20 min-w-[50px] border rounded px-1 sm:px-2 py-1 text-[11px] sm:text-xs text-right font-bold" placeholder="0" /></td>
                                     <td className="px-1 sm:px-2 py-2 text-center">
                                       <div className="flex justify-center gap-1">
                                         <button onClick={saveMapEdit} className="text-emerald-600 bg-emerald-50 p-1 sm:p-1.5 rounded border border-emerald-200 shadow-sm"><Check size={14}/></button>
@@ -1486,7 +1486,7 @@ export default function App() {
                                   </td>
                                   <td className="px-1 py-1 hidden sm:table-cell"><input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full border px-1 py-1 text-xs" /></td>
                                   <td className="px-1 py-1 text-center"><input type="number" inputMode="numeric" pattern="[0-9]*" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} className="w-full min-w-[40px] max-w-[60px] mx-auto border rounded px-1 py-1 text-xs text-center font-bold" /></td>
-                                  <td className="px-1 py-1 text-right"><input type="number" inputMode="numeric" pattern="[0-9]*" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full min-w-[60px] max-w-[80px] ml-auto border rounded px-1 py-1 text-xs text-right" /></td>
+                                  <td className="px-1 py-1 text-right"><input type="text" inputMode="numeric" value={editForm.price === 0 ? '' : Number(editForm.price).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(rawValue)}); }} className="w-full min-w-[60px] max-w-[80px] ml-auto border rounded px-1 py-1 text-xs text-right" placeholder="0" /></td>
                                   <td className="px-1 py-1 hidden sm:table-cell"><input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full border rounded px-1 py-1 text-xs" /></td>
                                   <td className="px-1 py-1 text-center">
                                     <div className="flex justify-center items-center gap-1 sm:gap-2">
