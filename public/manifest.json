@@ -3,8 +3,8 @@
   "name": "당근 재고",
   "icons": [
     {
-      "src": "/icon.svg",
-      "type": "image/svg+xml",
+      "src": "/icon.png",
+      "type": "image/png",
       "sizes": "192x192 512x512"
     }
   ],
