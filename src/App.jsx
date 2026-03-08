@@ -1362,7 +1362,8 @@ export default function App() {
 
                     {/* 표와 요약을 하나의 테이블 안에 넣어서 라인이 100% 일치하도록 구성 */}
                     <div className="flex-1 overflow-x-auto overflow-y-auto bg-white relative">
-                      <table className="w-full text-sm text-left table-fixed min-w-[340px] sm:min-w-[700px]">
+                      {/* 💡 테이블이 부모 끝까지 꽉 차도록 min-h-full 속성을 추가합니다 */}
+                      <table className="w-full min-h-full text-sm text-left table-fixed min-w-[340px] sm:min-w-[700px]">
                         <thead className="bg-gray-50 sticky top-0 shadow-sm text-gray-600 border-b border-gray-200 z-10">
                           <tr>
                             <th className="px-2 sm:px-4 py-3 font-semibold w-[40%] sm:w-[25%] cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1 text-[11px] sm:text-sm">상품명 <span className="sm:hidden text-gray-400 font-normal">/ 정보</span> {getSortIcon('product')}</div></th>
@@ -1420,6 +1421,8 @@ export default function App() {
                               );
                             })
                           )}
+                          {/* 💡 남은 공간을 팽창해서 차지하며 tfoot을 바닥으로 밀어내는 투명 더미 행 */}
+                          <tr className="h-full pointer-events-none"><td colSpan="6" className="p-0 border-0"></td></tr>
                         </tbody>
                         
                         {/* 하단 요약 박스를 완전히 표 내부(tfoot)로 편입시켜 칸 라인을 100% 일치시킵니다 */}
@@ -1521,7 +1524,8 @@ export default function App() {
                  </div>
 
                  <div className="flex-1 overflow-x-auto overflow-y-auto bg-white p-0 relative">
-                   <table className="w-full text-sm text-left table-fixed min-w-[320px] sm:min-w-[700px]">
+                   {/* 💡 테이블이 부모 끝까지 꽉 차도록 min-h-full 속성을 추가합니다 */}
+                   <table className="w-full min-h-full text-sm text-left table-fixed min-w-[320px] sm:min-w-[700px]">
                      <thead className="bg-gray-50 sticky top-0 shadow-sm font-bold text-gray-600 z-10 border-b border-gray-200">
                        <tr>
                          <th className="px-2 sm:px-4 py-3 cursor-pointer hidden sm:table-cell sm:w-[15%]" onClick={() => requestSort('date')}><div className="flex items-center gap-1 text-[11px] sm:text-sm">판매일 {getSortIcon('date')}</div></th>
@@ -1582,6 +1586,8 @@ export default function App() {
                             );
                          })
                        )}
+                       {/* 💡 남은 공간을 팽창해서 차지하며 tfoot을 바닥으로 밀어내는 투명 더미 행 */}
+                       <tr className="h-full pointer-events-none"><td colSpan="7" className="p-0 border-0"></td></tr>
                      </tbody>
                      
                      <tfoot className={`border-t-2 font-bold sticky bottom-0 z-10 shadow-[0_-2px_4px_rgba(0,0,0,0.05)] ${maximizedView === 'period' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
