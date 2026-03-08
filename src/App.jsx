@@ -352,11 +352,14 @@ export default function App() {
   };
 
   const handleDeleteSale = async (id) => {
-    if (supabase) {
-      const { error } = await supabase.from('sales').delete().eq('id', id);
-      if (error) { console.error(error); return alert("삭제 실패"); }
+    // 💡 삭제 전 확인(confirm) 창을 띄웁니다.
+    if (window.confirm("이 판매 내역을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) {
+      if (supabase) {
+        const { error } = await supabase.from('sales').delete().eq('id', id);
+        if (error) { console.error(error); return alert("삭제 실패"); }
+      }
+      setSales(sales.filter(sale => sale.id !== id));
     }
-    setSales(sales.filter(sale => sale.id !== id));
   };
 
   const saveEdit = async () => {
@@ -1294,7 +1297,7 @@ export default function App() {
                 {maximizedView === 'period' ? <TrendingUp size={20} className="text-emerald-600 sm:w-6 sm:h-6" /> : maximizedView === 'total' ? <Archive size={20} className="text-blue-600 sm:w-6 sm:h-6" /> : <Box size={20} className="text-orange-600 sm:w-6 sm:h-6" />}
                 <div>
                   <h2 className="text-base sm:text-xl font-bold leading-tight">
-                    {maximizedView === 'period' ? "기간 판매 상세 내역" : maximizedView === 'total' ? "전체 누적 판매 상세 내역" : "재고 상세 관리 및 추가"}
+                    {maximizedView === 'period' ? "기간 판매 상세 내역" : maximizedView === 'total' ? "누적 판매 상세 내역" : "재고 상세 관리 및 추가"}
                   </h2>
                   {maximizedView === 'period' && (
                     <p className="text-[10px] sm:text-sm opacity-80 mt-0.5">
