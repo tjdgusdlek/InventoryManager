@@ -1426,17 +1426,19 @@ export default function App() {
                         </tbody>
                         
                         {/* 하단 요약 박스를 완전히 표 내부(tfoot)로 편입시켜 칸 라인을 100% 일치시킵니다 */}
-                        <tfoot className="bg-orange-50/90 border-t-2 border-orange-200 font-bold text-gray-800 sticky bottom-0 z-10 shadow-[0_-2px_4px_rgba(0,0,0,0.05)]">
-                          <tr>
-                            <td className="px-2 sm:px-4 py-3 text-center text-orange-900 text-[11px] sm:hidden break-keep">총 {processedInventory.length}건</td>
-                            <td colSpan="2" className="hidden sm:table-cell px-4 py-3 text-center text-orange-900 text-sm">검색된 품목: {processedInventory.length}건</td>
-                            <td className="px-1 sm:px-4 py-3 text-center text-orange-900 text-sm sm:text-base">{processedInventory.reduce((acc, curr) => acc + curr.qty, 0)}</td>
-                            <td className="hidden sm:table-cell"></td>
-                            <td className="px-1 sm:px-4 py-3 text-center text-orange-600 text-sm sm:text-lg">{processedInventory.reduce((acc, curr) => acc + curr.remainQty, 0)}</td>
-                            <td></td>
-                          </tr>
-                        </tfoot>
-                      </table>
+                        </table>
+                    </div>
+                    
+                    {/* 💡 표 바깥으로 빼낸 100% 하단 고정 요약 박스 */}
+                    <div className="bg-orange-50/90 border-t-2 border-orange-200 font-bold text-gray-800 px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center shrink-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                      <div className="text-orange-900 text-[11px] sm:text-sm">
+                        <span className="sm:hidden">총 {processedInventory.length}건</span>
+                        <span className="hidden sm:inline">검색된 품목: {processedInventory.length}건</span>
+                      </div>
+                      <div className="flex gap-4 sm:gap-8 items-center text-[11px] sm:text-base">
+                        <div className="text-orange-900">총 수량: <span className="text-sm sm:text-lg">{processedInventory.reduce((acc, curr) => acc + curr.qty, 0)}</span></div>
+                        <div className="text-orange-600">남은 수량: <span className="text-sm sm:text-lg">{processedInventory.reduce((acc, curr) => acc + curr.remainQty, 0)}</span></div>
+                      </div>
                     </div>
                   </>
                 )}
@@ -1590,23 +1592,26 @@ export default function App() {
                        <tr className="h-full pointer-events-none"><td colSpan="7" className="p-0 border-0"></td></tr>
                      </tbody>
                      
-                     <tfoot className={`border-t-2 font-bold sticky bottom-0 z-10 shadow-[0_-2px_4px_rgba(0,0,0,0.05)] ${maximizedView === 'period' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
-                       {(() => {
-                         const tQ = modalDetailedData.reduce((a, c) => a + c.quantity, 0); const tA = modalDetailedData.reduce((a, c) => a + c.totalPrice, 0);
-                         return (
-                           <tr>
-                             <td className="px-2 py-3 text-center text-[10px] sm:hidden break-keep">평균가<br/>{tQ > 0 ? Math.round(tA/tQ).toLocaleString() : 0}원</td>
-                             <td colSpan="3" className="hidden sm:table-cell px-4 py-3 text-center text-sm">개당 평균 판매가: {tQ > 0 ? Math.round(tA/tQ).toLocaleString() : 0}원</td>
-                             <td className="px-1 sm:px-4 py-3 text-center text-[11px] sm:text-base">{tQ}</td>
-                             <td className="px-1 sm:px-4 py-3 text-right text-[11px] sm:text-base">{tA.toLocaleString()}원</td>
-                             <td colSpan="2" className="hidden sm:table-cell"></td>
-                             <td className="sm:hidden"></td>
-                           </tr>
-                         )
-                       })()}
-                     </tfoot>
-                   </table>
+                     </table>
                  </div>
+
+                 {/* 💡 표 바깥으로 빼낸 100% 하단 고정 요약 박스 */}
+                 {(() => {
+                    const tQ = modalDetailedData.reduce((a, c) => a + c.quantity, 0); 
+                    const tA = modalDetailedData.reduce((a, c) => a + c.totalPrice, 0);
+                    return (
+                      <div className={`border-t-2 font-bold px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center shrink-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] ${maximizedView === 'period' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
+                        <div className="text-[11px] sm:text-sm">
+                          <span className="opacity-80">개당 평균가: </span> 
+                          <span>{tQ > 0 ? Math.round(tA/tQ).toLocaleString() : 0}원</span>
+                        </div>
+                        <div className="flex gap-4 sm:gap-8 items-center text-[11px] sm:text-base">
+                          <div>총 수량: <span className="text-sm sm:text-lg">{tQ}개</span></div>
+                          <div>총 금액: <span className="text-sm sm:text-lg">{tA.toLocaleString()}원</span></div>
+                        </div>
+                      </div>
+                    );
+                 })()}
 
               </div>
             )}
