@@ -106,6 +106,7 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
           <Calendar size={16} />
         </button>
       </div>
+
       {isOpen && (
         <>
           {/* 모바일 환경: 달력 뒤에 반투명한 배경을 깔고 클릭 시 닫히도록 함 (PC에서는 숨김) */}
@@ -124,66 +125,67 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
             ${dropdownAlign === 'right' ? 'sm:right-0 sm:left-auto' : 'sm:left-0 sm:right-auto'}
           `}>
             <div className="flex justify-between items-center mb-2">
-            <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1 hover:bg-gray-100 rounded text-gray-600">&lt;</button>
-            <div className="font-bold text-gray-800">{year}년 {month + 1}월</div>
-            <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1 hover:bg-gray-100 rounded text-gray-600">&gt;</button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 text-center text-xs mb-1">
-            <div className="text-red-500 font-medium">일</div>
-            <div className="text-gray-600">월</div><div className="text-gray-600">화</div><div className="text-gray-600">수</div><div className="text-gray-600">목</div><div className="text-gray-600">금</div>
-            <div className="text-blue-500 font-medium">토</div>
-          </div>
-          <div className="grid grid-cols-7 gap-1 text-center text-sm">
-            {days.map((day, idx) => {
-              if (!day) return <div key={idx} className="p-1"></div>;
-              const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-              const isHoliday = checkIsHoliday(currentDateStr);
-              const isSunday = idx % 7 === 0;
-              const isSaturday = idx % 7 === 6;
+              <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1 hover:bg-gray-100 rounded text-gray-600">&lt;</button>
+              <div className="font-bold text-gray-800">{year}년 {month + 1}월</div>
+              <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1 hover:bg-gray-100 rounded text-gray-600">&gt;</button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-xs mb-1">
+              <div className="text-red-500 font-medium">일</div>
+              <div className="text-gray-600">월</div><div className="text-gray-600">화</div><div className="text-gray-600">수</div><div className="text-gray-600">목</div><div className="text-gray-600">금</div>
+              <div className="text-blue-500 font-medium">토</div>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-sm">
+              {days.map((day, idx) => {
+                if (!day) return <div key={idx} className="p-1"></div>;
+                const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isHoliday = checkIsHoliday(currentDateStr);
+                const isSunday = idx % 7 === 0;
+                const isSaturday = idx % 7 === 6;
 
-              let isInRange = false;
-              let isEndpoint = false;
+                let isInRange = false;
+                let isEndpoint = false;
 
-              if (isRangeMode) {
-                if (tempStart) {
-                  if (hoverDate) {
-                    const minStr = tempStart < hoverDate ? tempStart : hoverDate;
-                    const maxStr = tempStart > hoverDate ? tempStart : hoverDate;
-                    if (currentDateStr >= minStr && currentDateStr <= maxStr) isInRange = true;
-                    if (currentDateStr === tempStart || currentDateStr === hoverDate) isEndpoint = true;
+                if (isRangeMode) {
+                  if (tempStart) {
+                    if (hoverDate) {
+                      const minStr = tempStart < hoverDate ? tempStart : hoverDate;
+                      const maxStr = tempStart > hoverDate ? tempStart : hoverDate;
+                      if (currentDateStr >= minStr && currentDateStr <= maxStr) isInRange = true;
+                      if (currentDateStr === tempStart || currentDateStr === hoverDate) isEndpoint = true;
+                    } else {
+                      if (currentDateStr === tempStart) isEndpoint = true;
+                    }
                   } else {
-                    if (currentDateStr === tempStart) isEndpoint = true;
+                    if (startDate && endDate) {
+                      if (currentDateStr >= startDate && currentDateStr <= endDate) isInRange = true;
+                      if (currentDateStr === startDate || currentDateStr === endDate) isEndpoint = true;
+                    }
                   }
                 } else {
-                  if (startDate && endDate) {
-                    if (currentDateStr >= startDate && currentDateStr <= endDate) isInRange = true;
-                    if (currentDateStr === startDate || currentDateStr === endDate) isEndpoint = true;
-                  }
+                  if (currentDateStr === startDate) isEndpoint = true;
                 }
-              } else {
-                if (currentDateStr === startDate) isEndpoint = true;
-              }
 
-              let textColor = 'text-gray-700';
-              if (isSunday || isHoliday) textColor = 'text-red-600 font-bold';
-              else if (isSaturday) textColor = 'text-blue-600 font-bold';
+                let textColor = 'text-gray-700';
+                if (isSunday || isHoliday) textColor = 'text-red-600 font-bold';
+                else if (isSaturday) textColor = 'text-blue-600 font-bold';
 
-              let bgClass = 'hover:bg-gray-100';
-              if (isEndpoint) {
-                bgClass = 'bg-violet-500 text-white font-bold ring-2 ring-violet-200';
-                textColor = 'text-white';
-              } else if (isInRange) {
-                bgClass = 'bg-violet-50';
-              }
+                let bgClass = 'hover:bg-gray-100';
+                if (isEndpoint) {
+                  bgClass = 'bg-violet-500 text-white font-bold ring-2 ring-violet-200';
+                  textColor = 'text-white';
+                } else if (isInRange) {
+                  bgClass = 'bg-violet-50';
+                }
 
-              return (
-                <button key={idx} type="button" onClick={() => handleDayClick(currentDateStr)} onMouseEnter={() => setHoverDate(currentDateStr)} className={`p-1.5 rounded-md transition-colors ${textColor} ${bgClass}`}>
-                  {day}
-                </button>
-              );
-            })}
+                return (
+                  <button key={idx} type="button" onClick={() => handleDayClick(currentDateStr)} onMouseEnter={() => setHoverDate(currentDateStr)} className={`p-1.5 rounded-md transition-colors ${textColor} ${bgClass}`}>
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
