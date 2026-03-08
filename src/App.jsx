@@ -973,12 +973,14 @@ export default function App() {
                     <table className="w-full text-sm text-left">
                       <thead className="bg-white sticky top-0 shadow-sm text-gray-500">
                         <tr>
-                          <th className="px-4 py-3 font-medium">상품명</th>
-                          <th className="px-4 py-3 font-medium">옵션명</th>
-                          <th className="px-4 py-3 font-medium text-right">수량</th>
-                          <th className="px-4 py-3 font-medium text-right">금액</th>
-                          <th className="pl-8 pr-4 py-3 font-medium">비고</th>
-                          <th className="px-3 py-3 text-center w-10"></th>
+                          {/* 모바일: 상품명 옆에 '/ 옵션' 표시 */}
+                          <th className="px-4 py-3 font-medium whitespace-nowrap">상품명 <span className="md:hidden text-[10px] font-normal text-gray-400 ml-1">/ 옵션</span></th>
+                          {/* 옵션명과 비고는 PC(md 이상)에서만 노출 */}
+                          <th className="px-4 py-3 font-medium whitespace-nowrap hidden md:table-cell">옵션명</th>
+                          <th className="px-4 py-3 font-medium text-right whitespace-nowrap">수량</th>
+                          <th className="px-4 py-3 font-medium text-right whitespace-nowrap">금액</th>
+                          <th className="pl-8 pr-4 py-3 font-medium whitespace-nowrap hidden md:table-cell">비고</th>
+                          <th className="px-2 py-3 text-center w-10"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
@@ -987,13 +989,19 @@ export default function App() {
                         ) : (
                           todayDetailedSales.map((sale) => (
                             <tr key={sale.id} className="hover:bg-emerald-50/50 group transition-colors">
-                              <td className="px-4 py-3 font-medium text-gray-800">{sale.product}</td>
-                              <td className="px-4 py-3 text-gray-600">{sale.option}</td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="font-medium text-gray-800 leading-tight">{sale.product}</div>
+                                {/* 모바일에서만 상품명 밑에 옵션명이 작게 나타남 */}
+                                <div className="text-[11px] text-gray-500 mt-0.5 md:hidden">{sale.option}</div>
+                              </td>
+                              {/* PC에서만 보이던 옵션명 칸 */}
+                              <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{sale.option}</td>
                               <td className="px-4 py-3 text-right font-medium">{sale.quantity}</td>
                               <td className="px-4 py-3 text-right text-emerald-600 font-bold">{sale.totalPrice.toLocaleString()}원</td>
-                              <td className="pl-8 pr-4 py-3 text-gray-500 text-xs truncate max-w-[150px]" title={sale.note}>{sale.note}</td>
-                              <td className="px-3 py-3 text-center">
-                                <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="내역 삭제"><Trash2 size={16} /></button>
+                              {/* PC에서만 보이던 비고 칸 */}
+                              <td className="pl-8 pr-4 py-3 text-gray-500 text-xs truncate max-w-[150px] hidden md:table-cell" title={sale.note}>{sale.note}</td>
+                              <td className="px-2 py-3 text-center">
+                                <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-red-500 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 md:p-1" title="내역 삭제"><Trash2 size={16} /></button>
                               </td>
                             </tr>
                           ))
