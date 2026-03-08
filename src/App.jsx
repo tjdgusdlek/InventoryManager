@@ -194,7 +194,8 @@ export default function App() {
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const pinRefs = useRef([]);
 
-  const [isDbConnected, setIsDbConnected] = useState(!!supabase);
+  const [supabaseClient, setSupabaseClient] = useState(null);
+  const isDbConnected = !!supabaseClient;
   const [isLoading, setIsLoading] = useState(false);
   
   const [sales, setSales] = useState([]); 
@@ -211,22 +212,48 @@ export default function App() {
   const [settlementData, setSettlementData] = useState({ intermediate: 0, account: 0, cash: 0 });
   const [isSettlementSaving, setIsSettlementSaving] = useState(false);
 
+  // --- 외부 모듈 에러 방지용 Supabase 동적 로드 ---
   useEffect(() => {
-    if (!supabase || !isAuthorized) return; 
+    if (!supabaseUrl || !supabaseKey) return;
+
+    const initSupabase = () => {
+      if (window.supabase) {
+        setSupabaseClient(window.supabase.createClient(supabaseUrl, supabaseKey));
+      }
+    };
+
+    if (window.supabase) {
+      initSupabase();
+    } else {
+      let script = document.getElementById('supabase-js-script');
+      if (!script) {
+        script = document.createElement('script');
+        script.id = 'supabase-js-script';
+        script.src = "https://unpkg.com/@supabase/supabase-js@2";
+        script.onload = initSupabase;
+        document.head.appendChild(script);
+      } else {
+        script.addEventListener('load', initSupabase);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!supabaseClient || !isAuthorized) return; 
 
     const fetchAllData = async () => {
       setIsLoading(true);
       try {
-        const { data: invData, error: invErr } = await supabase.from('inventory').select('*').order('id', { ascending: true });
+        const { data: invData, error: invErr } = await supabaseClient.from('inventory').select('*').order('id', { ascending: true });
         if (!invErr && invData) setInventoryData(invData);
 
-        const { data: salesData, error: salesErr } = await supabase.from('sales').select('*').order('date', { ascending: false });
+        const { data: salesData, error: salesErr } = await supabaseClient.from('sales').select('*').order('date', { ascending: false });
         if (!salesErr && salesData) setSales(salesData);
 
-        const { data: mapData, error: mapErr } = await supabase.from('option_mappings').select('*');
+        const { data: mapData, error: mapErr } = await supabaseClient.from('option_mappings').select('*');
         if (!mapErr && mapData) setOptionMappings(mapData);
 
-        const { data: settleData, error: settleErr } = await supabase.from('settlement').select('*').eq('id', 1).maybeSingle();
+        const { data: settleData, error: settleErr } = await supabaseClient.from('settlement').select('*').eq('id', 1).maybeSingle();
         if (!settleErr && settleData) {
            setSettlementData({
              intermediate: settleData.intermediate || 0,
@@ -242,7 +269,7 @@ export default function App() {
     };
 
     fetchAllData();
-  }, [isAuthorized]);
+  }, [isAuthorized, supabaseClient]);
 
   const handlePinChange = (index, value) => {
     if (!/^\d*$/.test(value)) return; 
@@ -330,8 +357,8 @@ export default function App() {
       note: formData.note
     };
 
-    if (supabase) {
-      const { error } = await supabase.from('sales').insert([newSale]);
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from('sales').insert([newSale]);
       if (error) return alert("DB 저장 중 오류가 발생했습니다.");
     }
     
@@ -340,14 +367,14 @@ export default function App() {
   };
 
   const handleDeleteSale = async (id) => {
-    if (supabase) await supabase.from('sales').delete().eq('id', id);
+    if (supabaseClient) await supabaseClient.from('sales').delete().eq('id', id);
     setSales(sales.filter(sale => sale.id !== id));
   };
 
   const saveEdit = async () => {
     if (!editForm.product || !editForm.option || editForm.quantity <= 0 || editForm.price < 0) return alert("입력값을 확인해주세요.");
     const updatedSale = { ...editForm, quantity: Number(editForm.quantity), price: Number(editForm.price), totalPrice: Number(editForm.quantity) * Number(editForm.price) };
-    if (supabase) await supabase.from('sales').update(updatedSale).eq('id', updatedSale.id);
+    if (supabaseClient) await supabaseClient.from('sales').update(updatedSale).eq('id', updatedSale.id);
     setSales(sales.map(s => s.id === updatedSale.id ? updatedSale : s));
     cancelEdit();
   };
@@ -356,14 +383,14 @@ export default function App() {
     if (!invEditForm.product || !invEditForm.option || invEditForm.qty < 0) return alert("입력값을 확인해주세요.");
     const { soldQty, remainQty, ...pureData } = invEditForm;
     const updatedInv = { ...pureData, qty: Number(invEditForm.qty), originPrice: Number(invEditForm.originPrice) || 0, sellPrice: Number(invEditForm.sellPrice) || 0 };
-    if (supabase) await supabase.from('inventory').update(updatedInv).eq('id', updatedInv.id);
+    if (supabaseClient) await supabaseClient.from('inventory').update(updatedInv).eq('id', updatedInv.id);
     setInventoryData(inventoryData.map(i => i.id === updatedInv.id ? updatedInv : i));
     cancelInvEdit();
   };
 
   const handleDeleteInv = async (id) => {
     if(window.confirm("이 품목을 재고 목록에서 삭제하시겠습니까?")) {
-      if (supabase) await supabase.from('inventory').delete().eq('id', id);
+      if (supabaseClient) await supabaseClient.from('inventory').delete().eq('id', id);
       setInventoryData(inventoryData.filter(i => i.id !== id));
     }
   };
@@ -394,7 +421,7 @@ export default function App() {
       dbItemToSave = newItem;
     }
 
-    if (supabase) await supabase.from('inventory').upsert([dbItemToSave]);
+    if (supabaseClient) await supabaseClient.from('inventory').upsert([dbItemToSave]);
     setInventoryData(newInv);
     setManualAddForm({ product: '', option: '', qty: 1, sellPrice: 0 });
     alert("재고가 추가되었습니다!");
@@ -402,8 +429,8 @@ export default function App() {
 
   const handleSaveSettlement = async () => {
     setIsSettlementSaving(true);
-    if (supabase) {
-      const { error } = await supabase.from('settlement').upsert([{
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from('settlement').upsert([{
         id: 1, 
         intermediate: settlementData.intermediate,
         account: settlementData.account,
@@ -461,10 +488,10 @@ export default function App() {
       dbInventoryToUpsert.push(dbItemToSave);
     }
 
-    if (supabase) {
+    if (supabaseClient) {
       try {
-        await supabase.from('option_mappings').upsert(dbMappingsToUpsert);
-        await supabase.from('inventory').upsert(dbInventoryToUpsert);
+        await supabaseClient.from('option_mappings').upsert(dbMappingsToUpsert);
+        await supabaseClient.from('inventory').upsert(dbInventoryToUpsert);
       } catch(err) {
         return alert("DB 일괄 저장에 실패했습니다.");
       }
@@ -479,7 +506,7 @@ export default function App() {
 
   const saveMapEdit = async () => {
     const updatedMap = { ...mapEditForm, sellPrice: Number(mapEditForm.sellPrice) };
-    if (supabase) await supabase.from('option_mappings').update(updatedMap).eq('rawId', updatedMap.rawId);
+    if (supabaseClient) await supabaseClient.from('option_mappings').update(updatedMap).eq('rawId', updatedMap.rawId);
     
     setOptionMappings(optionMappings.map(m => m.rawId === mapEditForm.rawId ? updatedMap : m));
 
@@ -487,7 +514,7 @@ export default function App() {
     if (invIdx >= 0) {
        const newInv = [...inventoryData];
        newInv[invIdx].sellPrice = updatedMap.sellPrice;
-       if (supabase) await supabase.from('inventory').update({ sellPrice: updatedMap.sellPrice }).eq('id', newInv[invIdx].id);
+       if (supabaseClient) await supabaseClient.from('inventory').update({ sellPrice: updatedMap.sellPrice }).eq('id', newInv[invIdx].id);
        setInventoryData(newInv);
     }
     setEditingMapId(null); setMapEditForm(null);
@@ -495,7 +522,7 @@ export default function App() {
 
   const deleteMap = async (rawId) => {
     if(window.confirm("이 매칭 정보를 삭제하시겠습니까?")) {
-      if (supabase) await supabase.from('option_mappings').delete().eq('rawId', rawId);
+      if (supabaseClient) await supabaseClient.from('option_mappings').delete().eq('rawId', rawId);
       setOptionMappings(optionMappings.filter(m => m.rawId !== rawId));
     }
   };
@@ -1111,7 +1138,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* 표 내부의 table-fixed를 제거하고 자연스러운 퍼센트 비율로 라인 완벽 정렬 */}
                     <div className="flex-1 overflow-x-auto overflow-y-auto bg-white relative">
                       <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 sticky top-0 shadow-sm text-gray-600 border-b border-gray-200 z-10">
@@ -1173,7 +1199,6 @@ export default function App() {
                         </tbody>
                       </table>
                     </div>
-                    {/* 하단 요약 (표와 분리된 div를 사용하여 정렬 깨짐 원천 차단) */}
                     <div className="px-4 sm:px-6 py-3 sm:py-4 border-t flex justify-between items-center bg-orange-50/80 text-orange-900 shrink-0 z-10 shadow-[0_-2px_5px_rgba(0,0,0,0.02)]">
                       <div className="text-xs sm:text-sm font-medium">검색 결과: <span className="font-bold">{processedInventory.length}건</span></div>
                       <div className="flex gap-4 sm:gap-8 text-xs sm:text-sm items-center">
