@@ -295,15 +295,9 @@ export default function App() {
   };
   const today = getLocalToday();
 
-  const formatDateWithDay = (dateStr) => {
-    if (!dateStr) return '';
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const dateObj = new Date(dateStr);
-    return `${dateStr} (${days[dateObj.getDay()]})`;
-  };
-
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(today);
+  // 💡 필터 초기값을 '오늘'이 아닌 '전체 기간(빈 문자열)'으로 설정합니다.
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [formData, setFormData] = useState({ date: today, product: '', option: '', quantity: 1, price: 0, note: '' });
 
   const uniqueProducts = useMemo(() => [...new Set(inventoryData.map(item => item.product))], [inventoryData]);
@@ -1478,7 +1472,8 @@ export default function App() {
               </div>
             ) : (
               <div className="flex-1 flex flex-col overflow-hidden bg-white">
-                 <div className="px-4 sm:px-6 py-3 bg-white border-b border-gray-100 flex flex-col sm:flex-row gap-3 justify-between items-center shrink-0 shadow-sm z-10">
+                 {/* 💡 테이블 헤더(z-10)보다 위로 올라오도록 이 구역의 z-index를 z-50으로 대폭 올렸습니다 */}
+                 <div className="px-4 sm:px-6 py-3 bg-white border-b border-gray-100 flex flex-col sm:flex-row gap-3 justify-between items-center shrink-0 shadow-sm z-50 relative">
                    <div className="flex flex-wrap w-full sm:w-auto gap-2 items-center">
                      {/* 💡 날짜(기간) 필터 컴포넌트를 여기에 배치합니다 */}
                      <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200 w-full sm:w-auto">
