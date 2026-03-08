@@ -1098,7 +1098,7 @@ export default function App() {
                               <Clock size={16} className="text-red-600 mr-1.5" /> 미정산금 (내가 보관 중인 판매대금)
                             </span>
                             <span className="text-xs text-gray-500 mt-1 block">
-                              누적 판매금({totalSales.toLocaleString()}) - 대표님 송금액({remitted.toLocaleString()})
+                              누적 판매금({totalSales.toLocaleString()}원) - 대표님 송금액({remitted.toLocaleString()}원)
                             </span>
                           </div>
                           <span className="font-black text-xl text-red-600 text-right">
@@ -1346,7 +1346,7 @@ export default function App() {
                           </label>
                           <label className="flex items-center gap-1.5 cursor-pointer font-bold text-sm text-gray-700 hover:text-orange-600 transition-colors">
                             <input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-4 h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
-                            <ClipboardList size={16} className={addMode === 'bulk' ? "text-orange-500" : "text-gray-400"} /> 텍스트 일괄 붙여넣기 (Raw Data)
+                            <ClipboardList size={16} className={addMode === 'bulk' ? "text-orange-500" : "text-gray-400"} /> 텍스트 일괄 붙여넣기
                           </label>
                         </div>
                         {addMode === 'manual' ? (
