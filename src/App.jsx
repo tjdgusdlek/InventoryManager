@@ -635,7 +635,7 @@ export default function App() {
   const todayTotalAmount = useMemo(() => todayDetailedSales.reduce((acc, sale) => acc + sale.totalPrice, 0), [todayDetailedSales]);
 
   const [maximizedView, setMaximizedView] = useState(null); 
-  const [sortConfig, setSortConfig] = useState({ key: 'product', direction: 'asc' }); 
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' }); 
   const [searchProduct, setSearchProduct] = useState('');
   const [searchOption, setSearchOption] = useState('');
   
@@ -748,26 +748,37 @@ export default function App() {
   };
 
   const modalDetailedData = useMemo(() => {
-    let data = [];
-    if (maximizedView === 'period') data = sales.filter(sale => sale.date >= startDate && sale.date <= endDate);
-    else if (maximizedView === 'total') data = [...sales];
-    else return [];
+    let data = maximizedView === 'period' ? sales.filter(s => s.date >= startDate && s.date <= endDate) : maximizedView === 'total' ? [...sales] : [];
+    if (searchProduct.trim()) data = data.filter(s => s.product.toLowerCase().includes(searchProduct.toLowerCase().trim()));
+    if (searchOption.trim()) data = data.filter(s => s.option.toLowerCase().includes(searchOption.toLowerCase().trim()));
+    
+    // 👇 정렬 로직 수정: 1차 선택된 키(기본 날짜), 2차 상품명(오름차순), 3차 옵션명(오름차순)
+    data.sort((a, b) => {
+      let valA = a[sortConfig.key] ?? ''; let valB = b[sortConfig.key] ?? '';
+      let comparison = 0;
+      
+      // 1. 선택된 키 (1차 기준) 비교
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        comparison = valA - valB;
+      } else {
+        if (valA < valB) comparison = -1;
+        else if (valA > valB) comparison = 1;
+      }
 
-    if (searchProduct.trim()) data = data.filter(sale => sale.product.toLowerCase().includes(searchProduct.toLowerCase().trim()));
-    if (searchOption.trim()) data = data.filter(sale => sale.option.toLowerCase().includes(searchOption.toLowerCase().trim()));
+      // 1차 기준 값이 다르면 방향(오름/내림)에 따라 즉시 정렬
+      if (comparison !== 0) {
+          return sortConfig.direction === 'asc' ? comparison : -comparison;
+      }
 
-    if (sortConfig.key) {
-      data.sort((a, b) => {
-        let valA = a[sortConfig.key] ?? '';
-        let valB = b[sortConfig.key] ?? '';
-        if (typeof valA === 'number' && typeof valB === 'number') {
-           return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
-        }
-        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
+      // 2. 1차 기준이 같을 경우 (예: 날짜가 같음), 2차 기준(상품명 오름차순) 강제 적용
+      if (a.product !== b.product) {
+          return a.product.localeCompare(b.product);
+      }
+      
+      // 3. 2차 기준(상품명)까지 같을 경우, 3차 기준(옵션명 오름차순) 강제 적용
+      return a.option.localeCompare(b.option);
+    });
+
     return data;
   }, [maximizedView, sales, startDate, endDate, sortConfig, searchProduct, searchOption]);
 
