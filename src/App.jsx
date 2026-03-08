@@ -1225,40 +1225,42 @@ export default function App() {
                 <div className="flex items-center gap-2"><Box size={18} /> 실시간 재고 현황</div>
                 <button onClick={() => setMaximizedView('inventory')} className="text-orange-600 hover:text-orange-900 hover:bg-orange-100 p-1.5 rounded transition-colors" title="재고 관리 확대 보기"><Maximize2 size={16} /></button>
               </div>
-              <div className="flex-1 overflow-x-auto min-h-0">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-orange-700 bg-orange-50/50 sticky top-0 shadow-sm">
+              {/* 실시간 재고 현황 표 모바일 정렬 최적화 */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+                {/* 테이블 너비를 100%로 고정하고 내부 비율을 강제합니다 */}
+                <table className="w-full text-sm text-left table-fixed">
+                  <thead className="text-xs text-orange-700 bg-orange-50/50 sticky top-0 shadow-sm z-10">
                     <tr>
-                      {/* 모바일일 때 상품명 옆에 '/ 옵션' 안내글 추가 */}
-                      <th className="px-4 py-3 font-medium whitespace-nowrap">상품명 <span className="md:hidden text-[10px] font-normal text-orange-600/80 ml-1">/ 옵션</span></th>
-                      {/* 옵션명 헤더는 PC(md 이상)에서만 보임 */}
-                      <th className="px-4 py-3 font-medium whitespace-nowrap hidden md:table-cell">옵션명</th>
-                      <th className="px-4 py-3 font-medium text-center whitespace-nowrap">총 수량</th>
-                      <th className="px-4 py-3 font-medium text-center whitespace-nowrap">남은 수량</th>
+                      {/* 모바일에서는 상품명이 50%, PC에서는 상품/옵션이 각각 30%씩 차지 */}
+                      <th className="px-4 py-3 font-medium whitespace-nowrap w-[50%] md:w-[30%]">상품명 <span className="md:hidden text-[10px] font-normal text-orange-600/80 ml-1">/ 옵션</span></th>
+                      <th className="px-4 py-3 font-medium whitespace-nowrap hidden md:table-cell md:w-[30%]">옵션명</th>
+                      {/* 수량 칸들을 각각 25%(모바일) / 20%(PC)로 고정하여 위아래 라인을 완벽히 맞춤 */}
+                      <th className="px-2 py-3 font-medium text-center whitespace-nowrap w-[25%] md:w-[20%]">총 수량</th>
+                      <th className="px-2 py-3 font-medium text-center whitespace-nowrap w-[25%] md:w-[20%]">남은 수량</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {currentInventory.map((item) => (
                       <tr key={item.id} className="hover:bg-orange-50/50 transition-colors">
-                        <td className="px-4 py-2 whitespace-nowrap">
-                          <div className="font-medium text-gray-800 leading-tight">{item.product}</div>
-                          {/* 모바일에서만 상품명 밑에 옵션명이 작게 나타남 */}
-                          <div className="text-[11px] text-gray-500 mt-0.5 md:hidden">{item.option}</div>
+                        <td className="px-4 py-2">
+                          <div className="font-bold text-gray-800 leading-tight break-keep">{item.product}</div>
+                          <div className="text-[11px] text-gray-500 mt-0.5 md:hidden break-keep">{item.option}</div>
                         </td>
-                        {/* PC에서만 보이던 옵션명 칸 */}
-                        <td className="px-4 py-2 text-gray-600 whitespace-nowrap text-xs hidden md:table-cell">{item.option}</td>
-                        <td className="px-4 py-2 text-center text-gray-500">{item.qty}</td>
-                        <td className="px-4 py-2 text-center">
+                        <td className="px-4 py-2 text-gray-600 text-xs hidden md:table-cell break-keep">{item.option}</td>
+                        <td className="px-2 py-2 text-center font-semibold text-gray-600">{item.qty}</td>
+                        <td className="px-2 py-2 text-center">
                           <span className={`inline-flex items-center justify-center px-2 py-1 rounded font-bold ${item.remainQty === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{item.remainQty}</span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-orange-50/30 border-t border-orange-100 font-bold text-gray-800">
+                  {/* 하단 합계 라인도 헤더와 짝이 맞도록 colSpan 로직 변경 */}
+                  <tfoot className="bg-orange-50/80 border-t-2 border-orange-200 font-bold text-gray-800 sticky bottom-0">
                     <tr>
-                      <td colSpan="2" className="px-4 py-3 text-center text-orange-800">전체 합계</td>
-                      <td className="px-4 py-3 text-center text-orange-800">{currentInventory.reduce((acc, curr) => acc + curr.qty, 0)}</td>
-                      <td className="px-4 py-3 text-center text-orange-600 text-lg">{currentInventory.reduce((acc, curr) => acc + curr.remainQty, 0)}</td>
+                      <td className="md:hidden px-4 py-3 text-center text-orange-900 text-xs">전체 합계</td>
+                      <td colSpan="2" className="hidden md:table-cell px-4 py-3 text-center text-orange-900">전체 합계</td>
+                      <td className="px-2 py-3 text-center text-orange-900 text-base">{currentInventory.reduce((acc, curr) => acc + curr.qty, 0)}</td>
+                      <td className="px-2 py-3 text-center text-orange-600 text-lg">{currentInventory.reduce((acc, curr) => acc + curr.remainQty, 0)}</td>
                     </tr>
                   </tfoot>
                 </table>
