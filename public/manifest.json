@@ -1,0 +1,16 @@
+{
+  "short_name": "당근 재고",
+  "name": "당근 재고",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "theme_color": "#f97316",
+  "description": "당근마켓 판매 및 재고 관리 앱"
+}

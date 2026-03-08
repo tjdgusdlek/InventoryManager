@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 흰색 둥근 사각형 배경 -->
+  <rect width="512" height="512" rx="120" fill="#ffffff"/>
+  <!-- 주황색 당근 아이콘 (가운데 정렬) -->
+  <svg x="96" y="96" width="320" height="320" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2.27 21.7s9.87-3.5 12.73-6.36a4.5 4.5 0 0 0-6.36-6.37C5.77 11.84 2.27 21.7 2.27 21.7z"/>
+    <path d="M8.64 14l-2.05-2.04"/>
+    <path d="M15.34 15l-2.46-2.46"/>
+    <path d="M22 9.64a2.1 2.1 0 0 0-2.94-2.94l-4.63 4.63-2.94-2.94L16.12 3.8A2.1 2.1 0 0 0 13.18 1L10.5 4.5 14 7l-2 2 2.5 2.5 2-2 2.5 3.5z"/>
+  </svg>
+</svg>
