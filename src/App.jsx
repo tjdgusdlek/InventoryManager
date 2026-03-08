@@ -751,7 +751,14 @@ export default function App() {
   };
 
   const modalDetailedData = useMemo(() => {
-    let data = maximizedView === 'period' ? sales.filter(s => s.date >= startDate && s.date <= endDate) : maximizedView === 'total' ? [...sales] : [];
+    // 이제 period 모달은 없으므로 total 모달에서 모든 데이터를 가져온 후 필터링합니다.
+    let data = maximizedView === 'total' ? [...sales] : [];
+    
+    // 💡 모달창 내에서 기간이 선택되었을 때만 필터링 적용
+    if (startDate && endDate) {
+      data = data.filter(s => s.date >= startDate && s.date <= endDate);
+    }
+    
     if (searchProduct.trim()) data = data.filter(s => s.product.toLowerCase().includes(searchProduct.toLowerCase().trim()));
     if (searchOption.trim()) data = data.filter(s => s.option.toLowerCase().includes(searchOption.toLowerCase().trim()));
     
@@ -862,25 +869,10 @@ export default function App() {
             당근 재고관리 시스템
           </h1>
           <div className="mt-2 flex items-center gap-2 text-xs font-semibold">
-            {isDbConnected ? (
-              <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
-                <Database size={12} /> Supabase 클라우드 DB 연동됨
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-md border border-orange-200">
-                <AlertCircle size={12} /> 데이터베이스 연결 오류
-              </span>
-            )}
+            {isDbConnected ? <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200"><Database size={12} /> Supabase 연동됨</span> : <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-md border border-orange-200"><AlertCircle size={12} /> DB 연결 오류</span>}
           </div>
         </div>
-        
-        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 mt-2 md:mt-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">{startDate !== endDate ? "조회 기간:" : "기준일:"}</span>
-            <CustomDatePicker startDate={startDate} endDate={endDate} isRangeMode={true} onChange={(start, end) => { setStartDate(start); setEndDate(end); }} dropdownAlign="right" className="font-semibold text-sm transition-colors" />
-            <button onClick={handleTodayClick} className="ml-1 px-3 py-1 text-xs rounded-md border transition-colors bg-white border-gray-300 text-gray-700 hover:bg-gray-50 font-medium shadow-sm">오늘</button>
-          </div>
-        </div>
+        {/* 상단 글로벌 기준일 선택기 삭제됨 */}
       </div>
 
       <div className="flex flex-col gap-6">
@@ -1157,56 +1149,8 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
           <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-white rounded-xl shadow-sm border border-emerald-200 overflow-hidden relative">
-               <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-100 font-semibold text-emerald-800 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <TrendingUp size={18} /> 기간 판매 요약
-                </div>
-                <button onClick={() => setMaximizedView('period')} className="text-emerald-600 hover:text-emerald-900 hover:bg-emerald-100 p-1.5 rounded transition-colors" title="상세 내역 확대 보기"><Maximize2 size={16} /></button>
-              </div>
-              <div className="bg-emerald-50/50 px-4 py-2 text-[11px] text-emerald-700 border-b border-emerald-100 text-center font-medium">
-                {startDate === endDate ? formatDateWithDay(startDate) : `${formatDateWithDay(startDate)} ~ ${formatDateWithDay(endDate)}`}
-              </div>
-              <div className="p-0">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-600 bg-gray-50/50">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">상품명</th>
-                      <th className="px-3 py-2 font-medium text-right whitespace-nowrap">수량</th>
-                      <th className="px-3 py-2 font-medium text-right whitespace-nowrap">금액</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {periodSalesSummary.list.length === 0 ? (
-                      <tr><td colSpan="3" className="text-center text-gray-400 py-4">판매 내역 없음</td></tr>
-                    ) : (
-                      periodSalesSummary.list.map((item, idx) => {
-                        const percent = periodSalesSummary.totalQty > 0 ? Math.round((item.quantity / periodSalesSummary.totalQty) * 100) : 0;
-                        return (
-                          <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-3 py-2">
-                              <div className="font-bold text-gray-800 break-keep">{item.product}</div>
-                              <div className="text-[11px] text-emerald-600/80 font-bold break-keep mt-0.5">판매 비중: {percent}%</div>
-                            </td>
-                            <td className="px-3 py-2 text-right font-bold whitespace-nowrap">{item.quantity}</td>
-                            <td className="px-3 py-2 text-right text-emerald-600 font-bold whitespace-nowrap">{item.amount.toLocaleString()}원</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                  <tfoot className="bg-emerald-50/50 font-bold border-t border-emerald-100">
-                    <tr>
-                      <td className="px-3 py-3 text-emerald-800 whitespace-nowrap">기간 합계</td>
-                      <td className="px-3 py-3 text-right text-emerald-800 whitespace-nowrap">{periodSalesSummary.totalQty}</td>
-                      <td className="px-3 py-3 text-right text-emerald-700 whitespace-nowrap">{periodSalesSummary.totalAmount.toLocaleString()}원</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
+            {/* 기간 판매 요약 박스 삭제됨 */}
 
             <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-hidden relative">
                <div className="bg-blue-50 px-4 py-3 border-b border-blue-100 font-semibold text-blue-800 flex justify-between items-center">
@@ -1304,18 +1248,13 @@ export default function App() {
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-6 lg:p-8">
           <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[85vh] flex flex-col overflow-hidden border-2 ${maximizedView === 'period' ? 'border-emerald-400' : maximizedView === 'total' ? 'border-blue-400' : 'border-orange-400'}`}>
             
-            <div className={`px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center border-b shrink-0 ${maximizedView === 'period' ? 'bg-emerald-50 border-emerald-100 text-emerald-900' : maximizedView === 'total' ? 'bg-blue-50 border-blue-100 text-blue-900' : 'bg-orange-50 border-orange-100 text-orange-900'}`}>
+            <div className={`px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center border-b shrink-0 ${maximizedView === 'total' ? 'bg-blue-50 border-blue-100 text-blue-900' : 'bg-orange-50 border-orange-100 text-orange-900'}`}>
               <div className="flex items-center gap-2 sm:gap-3">
-                {maximizedView === 'period' ? <TrendingUp size={20} className="text-emerald-600 sm:w-6 sm:h-6" /> : maximizedView === 'total' ? <Archive size={20} className="text-blue-600 sm:w-6 sm:h-6" /> : <Box size={20} className="text-orange-600 sm:w-6 sm:h-6" />}
+                {maximizedView === 'total' ? <Archive size={20} className="text-blue-600 sm:w-6 sm:h-6" /> : <Box size={20} className="text-orange-600 sm:w-6 sm:h-6" />}
                 <div>
                   <h2 className="text-base sm:text-xl font-bold leading-tight">
-                    {maximizedView === 'period' ? "기간 판매 상세 내역" : maximizedView === 'total' ? "누적 판매 상세 내역" : "재고 상세 관리 및 추가"}
+                    {maximizedView === 'total' ? "전체 누적 판매 상세 내역" : "재고 상세 관리 및 추가"}
                   </h2>
-                  {maximizedView === 'period' && (
-                    <p className="text-[10px] sm:text-sm opacity-80 mt-0.5">
-                      {startDate === endDate ? formatDateWithDay(startDate) : `${formatDateWithDay(startDate)} ~ ${formatDateWithDay(endDate)}`}
-                    </p>
-                  )}
                 </div>
               </div>
               <button onClick={handleCloseModal} className="p-1.5 sm:p-2 rounded-lg bg-white/50 hover:bg-white transition-colors"><X size={20} /></button>
@@ -1540,19 +1479,28 @@ export default function App() {
             ) : (
               <div className="flex-1 flex flex-col overflow-hidden bg-white">
                  <div className="px-4 sm:px-6 py-3 bg-white border-b border-gray-100 flex flex-col sm:flex-row gap-3 justify-between items-center shrink-0 shadow-sm z-10">
-                   <div className="flex w-full sm:w-auto gap-2">
-                     <div className="relative flex-1 sm:w-40">
+                   <div className="flex flex-wrap w-full sm:w-auto gap-2 items-center">
+                     {/* 💡 날짜(기간) 필터 컴포넌트를 여기에 배치합니다 */}
+                     <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200 w-full sm:w-auto">
+                       <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">조회 기간:</span>
+                       <CustomDatePicker startDate={startDate} endDate={endDate} isRangeMode={true} onChange={(start, end) => { setStartDate(start); setEndDate(end); }} dropdownAlign="left" className="text-xs font-bold text-gray-800 flex-1 justify-center" />
+                       {startDate && (
+                         <button onClick={() => { setStartDate(''); setEndDate(''); }} className="ml-1 text-gray-400 hover:text-red-500 transition-colors" title="날짜 초기화"><X size={14}/></button>
+                       )}
+                     </div>
+                     
+                     <div className="relative flex-1 sm:w-32 min-w-[120px]">
                        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"/>
                        <input type="text" value={searchProduct} onChange={e => setSearchProduct(e.target.value)} placeholder="상품명 검색" className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-md text-xs outline-none focus:ring-2 focus:ring-blue-500/50"/>
                      </div>
-                     <div className="relative flex-1 sm:w-40">
+                     <div className="relative flex-1 sm:w-32 min-w-[120px]">
                        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"/>
                        <input type="text" value={searchOption} onChange={e => setSearchOption(e.target.value)} placeholder="옵션명 검색" className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-md text-xs outline-none focus:ring-2 focus:ring-blue-500/50"/>
                      </div>
                    </div>
-                   {(searchProduct || searchOption) && (
-                     <button onClick={() => { setSearchProduct(''); setSearchOption(''); }} className="text-xs text-gray-500 hover:text-gray-800 underline whitespace-nowrap sm:ml-auto w-full sm:w-auto text-right sm:text-left">
-                       필터 초기화
+                   {(searchProduct || searchOption || startDate) && (
+                     <button onClick={() => { setSearchProduct(''); setSearchOption(''); setStartDate(''); setEndDate(''); }} className="text-xs text-gray-500 hover:text-gray-800 underline whitespace-nowrap sm:ml-auto w-full sm:w-auto text-right sm:text-left">
+                       필터 전체 초기화
                      </button>
                    )}
                  </div>
