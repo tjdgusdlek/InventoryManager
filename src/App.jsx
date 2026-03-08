@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Calendar, Package, TrendingUp, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardPaste, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, PenTool, ClipboardList } from 'lucide-react';
+import { Plus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, RefreshCw, TrendingUp } from 'lucide-react';
 
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
@@ -39,10 +39,17 @@ const getDateColorClass = (dateString) => {
   return 'text-gray-900';
 };
 
-// --- 커스텀 날짜 선택기 컴포넌트 ---
+const formatDateWithDay = (dateStr) => {
+  if (!dateStr) return '';
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const dateObj = new Date(dateStr);
+  return `${dateStr} (${days[dateObj.getDay()]})`;
+};
+
+// --- 커스텀 날짜 선택기 ---
 const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClassName = "inline-block", dropdownAlign = "left", isRangeMode = false }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [viewDate, setViewDate] = useState(new Date(startDate || new Date()));
+  const [viewDate, setViewDate] = useState(startDate ? new Date(startDate) : new Date());
   const calendarRef = useRef(null);
   const [tempStart, setTempStart] = useState(null);
   const [hoverDate, setHoverDate] = useState(null);
@@ -57,7 +64,7 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
 
   useEffect(() => {
     if (isOpen) {
-      setViewDate(new Date(startDate || new Date()));
+      setViewDate(startDate ? new Date(startDate) : new Date());
       setTempStart(null);
       setHoverDate(null);
     }
@@ -94,7 +101,9 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
   return (
     <div className={`relative ${wrapperClassName}`} ref={calendarRef}>
       <div className={`flex items-center justify-between ${className}`}>
-        {isRangeMode && startDate !== endDate ? (
+        {!startDate ? (
+          <span className="text-gray-500 font-medium px-1">전체 기간</span>
+        ) : isRangeMode && startDate !== endDate ? (
           <div className="flex items-center gap-1">
             <span className={getDateColorClass(startDate)}>{startDate}</span>
             <span className="text-gray-400 font-medium px-1">~</span>
@@ -110,21 +119,8 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
 
       {isOpen && (
         <>
-          {/* 모바일 환경: 달력 뒤에 반투명한 배경을 깔고 클릭 시 닫히도록 함 (PC에서는 숨김) */}
-          <div 
-            className="fixed inset-0 z-[60] bg-black/10 backdrop-blur-[1px] sm:hidden" 
-            onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
-          ></div>
-          
-          {/* 달력 창: 모바일은 정중앙, PC는 버튼 바로 밑에 위치하도록 스마트하게 반응형 적용 */}
-          <div className={`
-            z-[70] bg-white rounded-xl shadow-2xl border border-gray-200 p-3 w-[280px] sm:w-64
-            /* 모바일 설정: 화면 정중앙에 고정 (잘림 절대 불가) */
-            fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-            /* PC 설정: 부모 버튼 바로 아래에 드롭다운 형식으로 부착 */
-            sm:absolute sm:top-[100%] sm:translate-x-0 sm:translate-y-0 sm:mt-1
-            ${dropdownAlign === 'right' ? 'sm:right-0 sm:left-auto' : 'sm:left-0 sm:right-auto'}
-          `}>
+          <div className="fixed inset-0 z-[60] bg-black/10 backdrop-blur-[1px] md:hidden" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}></div>
+          <div className={`z-[70] bg-white rounded-xl shadow-2xl border border-gray-200 p-3 w-[280px] md:w-64 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 md:absolute md:top-[100%] md:translate-x-0 md:translate-y-0 md:mt-1 ${dropdownAlign === 'right' ? 'md:right-0 md:left-auto' : 'md:left-0 md:right-auto'}`}>
             <div className="flex justify-between items-center mb-2">
               <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1 hover:bg-gray-100 rounded text-gray-600">&lt;</button>
               <div className="font-bold text-gray-800">{year}년 {month + 1}월</div>
@@ -197,7 +193,8 @@ export default function App() {
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const pinRefs = useRef([]);
 
-  const [isDbConnected, setIsDbConnected] = useState(!!supabase);
+  const [supabaseClient, setSupabaseClient] = useState(null);
+  const isDbConnected = !!supabaseClient;
   const [isLoading, setIsLoading] = useState(false);
   
   const [sales, setSales] = useState([]); 
@@ -214,46 +211,70 @@ export default function App() {
   const [settlementData, setSettlementData] = useState({ intermediate: 0, account: 0, cash: 0 });
   const [isSettlementSaving, setIsSettlementSaving] = useState(false);
 
+  // --- 외부 모듈 에러 방지용 Supabase 동적 로드 ---
   useEffect(() => {
-    if (!supabase || !isAuthorized) return; 
+    if (!supabaseUrl || !supabaseKey) return;
 
-    const fetchAllData = async () => {
-      setIsLoading(true);
-      try {
-        const { data: invData, error: invErr } = await supabase.from('inventory').select('*').order('id', { ascending: true });
-        if (!invErr && invData) setInventoryData(invData);
-
-        const { data: salesData, error: salesErr } = await supabase.from('sales').select('*').order('date', { ascending: false });
-        if (!salesErr && salesData) setSales(salesData);
-
-        const { data: mapData, error: mapErr } = await supabase.from('option_mappings').select('*');
-        if (!mapErr && mapData) setOptionMappings(mapData);
-
-        const { data: settleData, error: settleErr } = await supabase.from('settlement').select('*').eq('id', 1).maybeSingle();
-        if (!settleErr && settleData) {
-           setSettlementData({
-             intermediate: settleData.intermediate || 0,
-             account: settleData.account || 0,
-             cash: settleData.cash || 0
-           });
-        }
-        
-      } catch (error) {
-        console.error("DB Fetch Error:", error);
-      } finally {
-        setIsLoading(false);
+    const initSupabase = () => {
+      if (window.supabase && !supabaseClient) {
+        setSupabaseClient(window.supabase.createClient(supabaseUrl, supabaseKey));
       }
     };
 
+    if (window.supabase) {
+      initSupabase();
+    } else {
+      let script = document.getElementById('supabase-js-script');
+      if (!script) {
+        script = document.createElement('script');
+        script.id = 'supabase-js-script';
+        script.src = "https://unpkg.com/@supabase/supabase-js@2";
+        script.onload = initSupabase;
+        document.head.appendChild(script);
+      } else {
+        script.addEventListener('load', initSupabase);
+      }
+    }
+  }, []);
+
+  // 💡 데이터 페칭 로직을 별도 함수로 분리하여 새로고침 버튼에서 재사용 가능하게 함
+  const fetchAllData = async () => {
+    if (!supabaseClient || !isAuthorized) return; 
+    setIsLoading(true);
+    try {
+      const { data: invData, error: invErr } = await supabaseClient.from('inventory').select('*').order('id', { ascending: true });
+      if (!invErr && invData) setInventoryData(invData);
+
+      const { data: salesData, error: salesErr } = await supabaseClient.from('sales').select('*').order('date', { ascending: false });
+      if (!salesErr && salesData) setSales(salesData);
+
+      const { data: mapData, error: mapErr } = await supabaseClient.from('option_mappings').select('*');
+      if (!mapErr && mapData) setOptionMappings(mapData);
+
+      const { data: settleData, error: settleErr } = await supabaseClient.from('settlement').select('*').eq('id', 1).maybeSingle();
+      if (!settleErr && settleData) {
+         setSettlementData({
+           intermediate: settleData.intermediate || 0,
+           account: settleData.account || 0,
+           cash: settleData.cash || 0
+         });
+      }
+    } catch (error) {
+      console.error("DB Fetch Error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAllData();
-  }, [isAuthorized]);
+  }, [isAuthorized, supabaseClient]);
 
   const handlePinChange = (index, value) => {
     if (!/^\d*$/.test(value)) return; 
     const newDigits = [...pinDigits];
     newDigits[index] = value.slice(-1); 
     setPinDigits(newDigits);
-
     if (value && index < 3) pinRefs.current[index + 1].focus();
   };
 
@@ -295,9 +316,9 @@ export default function App() {
   };
   const today = getLocalToday();
 
-  // 💡 필터 초기값을 '오늘'이 아닌 '전체 기간(빈 문자열)'으로 설정합니다.
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  
   const [formData, setFormData] = useState({ date: today, product: '', option: '', quantity: 1, price: 0, note: '' });
 
   const uniqueProducts = useMemo(() => [...new Set(inventoryData.map(item => item.product))], [inventoryData]);
@@ -306,8 +327,6 @@ export default function App() {
     if (!formData.product) return [];
     return inventoryData.filter(item => item.product === formData.product);
   }, [formData.product, inventoryData]);
-
-  const handleTodayClick = () => { setStartDate(today); setEndDate(today); };
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -336,9 +355,9 @@ export default function App() {
       note: formData.note
     };
 
-    if (supabase) {
-      const { error } = await supabase.from('sales').insert([newSale]);
-      if (error) { console.error(error); return alert("DB 저장 중 오류가 발생했습니다."); }
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from('sales').insert([newSale]);
+      if (error) return alert("DB 저장 중 오류가 발생했습니다.");
     }
     
     setSales([newSale, ...sales]);
@@ -346,12 +365,8 @@ export default function App() {
   };
 
   const handleDeleteSale = async (id) => {
-    // 💡 삭제 전 확인(confirm) 창을 띄웁니다.
     if (window.confirm("이 판매 내역을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) {
-      if (supabase) {
-        const { error } = await supabase.from('sales').delete().eq('id', id);
-        if (error) { console.error(error); return alert("삭제 실패"); }
-      }
+      if (supabaseClient) await supabaseClient.from('sales').delete().eq('id', id);
       setSales(sales.filter(sale => sale.id !== id));
     }
   };
@@ -359,37 +374,23 @@ export default function App() {
   const saveEdit = async () => {
     if (!editForm.product || !editForm.option || editForm.quantity <= 0 || editForm.price < 0) return alert("입력값을 확인해주세요.");
     const updatedSale = { ...editForm, quantity: Number(editForm.quantity), price: Number(editForm.price), totalPrice: Number(editForm.quantity) * Number(editForm.price) };
-    
-    if (supabase) {
-      const { error } = await supabase.from('sales').update(updatedSale).eq('id', updatedSale.id);
-      if (error) { console.error(error); return alert("수정 실패"); }
-    }
-    
+    if (supabaseClient) await supabaseClient.from('sales').update(updatedSale).eq('id', updatedSale.id);
     setSales(sales.map(s => s.id === updatedSale.id ? updatedSale : s));
     cancelEdit();
   };
 
   const saveInvEdit = async () => {
     if (!invEditForm.product || !invEditForm.option || invEditForm.qty < 0) return alert("입력값을 확인해주세요.");
-    
     const { soldQty, remainQty, ...pureData } = invEditForm;
     const updatedInv = { ...pureData, qty: Number(invEditForm.qty), originPrice: Number(invEditForm.originPrice) || 0, sellPrice: Number(invEditForm.sellPrice) || 0 };
-    
-    if (supabase) {
-      const { error } = await supabase.from('inventory').update(updatedInv).eq('id', updatedInv.id);
-      if (error) { console.error(error); return alert("수정 실패"); }
-    }
-
+    if (supabaseClient) await supabaseClient.from('inventory').update(updatedInv).eq('id', updatedInv.id);
     setInventoryData(inventoryData.map(i => i.id === updatedInv.id ? updatedInv : i));
     cancelInvEdit();
   };
 
   const handleDeleteInv = async (id) => {
     if(window.confirm("이 품목을 재고 목록에서 삭제하시겠습니까?")) {
-      if (supabase) {
-        const { error } = await supabase.from('inventory').delete().eq('id', id);
-        if (error) { console.error(error); return alert("삭제 실패"); }
-      }
+      if (supabaseClient) await supabaseClient.from('inventory').delete().eq('id', id);
       setInventoryData(inventoryData.filter(i => i.id !== id));
     }
   };
@@ -409,15 +410,10 @@ export default function App() {
 
     let newInv = [...inventoryData];
     const existingIdx = newInv.findIndex(i => i.product === newItem.product && i.option === newItem.option);
-    
     let dbItemToSave;
 
     if (existingIdx >= 0) {
-      newInv[existingIdx] = {
-        ...newInv[existingIdx],
-        qty: newInv[existingIdx].qty + newItem.qty,
-        sellPrice: newItem.sellPrice
-      };
+      newInv[existingIdx] = { ...newInv[existingIdx], qty: newInv[existingIdx].qty + newItem.qty, sellPrice: newItem.sellPrice };
       const { soldQty, remainQty, ...pureData } = newInv[existingIdx];
       dbItemToSave = pureData;
     } else {
@@ -425,31 +421,23 @@ export default function App() {
       dbItemToSave = newItem;
     }
 
-    if (supabase) {
-       const { error } = await supabase.from('inventory').upsert([dbItemToSave]);
-       if (error) { console.error(error); return alert("DB 저장 중 오류가 발생했습니다."); }
-    }
-
+    if (supabaseClient) await supabaseClient.from('inventory').upsert([dbItemToSave]);
     setInventoryData(newInv);
     setManualAddForm({ product: '', option: '', qty: 1, sellPrice: 0 });
-    alert("재고가 성공적으로 추가되었습니다!");
+    alert("재고가 추가되었습니다!");
   };
 
   const handleSaveSettlement = async () => {
     setIsSettlementSaving(true);
-    if (supabase) {
-      const { error } = await supabase.from('settlement').upsert([{
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from('settlement').upsert([{
         id: 1, 
         intermediate: settlementData.intermediate,
         account: settlementData.account,
         cash: settlementData.cash
       }]);
-      if (error) {
-        console.error("정산 현황 저장 오류:", error);
-        alert("DB 저장에 실패했습니다.");
-      } else {
-        alert("정산 데이터가 DB에 안전하게 저장되었습니다!");
-      }
+      if (error) alert("DB 저장에 실패했습니다.");
+      else alert("정산 데이터가 DB에 안전하게 저장되었습니다!");
     }
     setIsSettlementSaving(false);
   };
@@ -464,33 +452,18 @@ export default function App() {
 
     const dbMappingsToUpsert = [];
     for (const item of pendingRawData) {
-      const mapData = {
-        rawId: item.rawId,
-        rawName: item.rawName,
-        product: item.mapTo.product,
-        option: item.mapTo.option,
-        sellPrice: Number(item.mapTo.sellPrice) || 0
-      };
-      
+      const mapData = { rawId: item.rawId, rawName: item.rawName, product: item.mapTo.product, option: item.mapTo.option, sellPrice: Number(item.mapTo.sellPrice) || 0 };
       const existingMapIdx = newMappings.findIndex(m => m.rawId === item.rawId);
       if (existingMapIdx >= 0) newMappings[existingMapIdx] = mapData;
       else newMappings.push(mapData);
-      
-      if(!dbMappingsToUpsert.find(m => m.rawId === mapData.rawId)) {
-        dbMappingsToUpsert.push(mapData);
-      }
+      if(!dbMappingsToUpsert.find(m => m.rawId === mapData.rawId)) dbMappingsToUpsert.push(mapData);
     }
 
     const inventoryAddMap = {};
     for (const item of pendingRawData) {
       const key = `${item.mapTo.product}__|__${item.mapTo.option}`;
       if (!inventoryAddMap[key]) {
-        inventoryAddMap[key] = {
-          product: item.mapTo.product,
-          option: item.mapTo.option,
-          qty: item.qty,
-          sellPrice: Number(item.mapTo.sellPrice) || 0
-        };
+        inventoryAddMap[key] = { product: item.mapTo.product, option: item.mapTo.option, qty: item.qty, sellPrice: Number(item.mapTo.sellPrice) || 0 };
       } else {
         inventoryAddMap[key].qty += item.qty;
       }
@@ -505,36 +478,21 @@ export default function App() {
       let dbItemToSave;
 
       if (invIdx >= 0) {
-         newInv[invIdx] = { 
-           ...newInv[invIdx], 
-           qty: newInv[invIdx].qty + aggItem.qty, 
-           sellPrice: aggItem.sellPrice 
-         };
+         newInv[invIdx] = { ...newInv[invIdx], qty: newInv[invIdx].qty + aggItem.qty, sellPrice: aggItem.sellPrice };
          const { soldQty, remainQty, ...pureData } = newInv[invIdx];
          dbItemToSave = pureData;
       } else {
-         dbItemToSave = {
-           id: Date.now() + Math.floor(Math.random() * 10000) + i, 
-           product: aggItem.product,
-           option: aggItem.option,
-           qty: aggItem.qty,
-           originPrice: 0,
-           sellPrice: aggItem.sellPrice
-         };
+         dbItemToSave = { id: Date.now() + Math.floor(Math.random() * 10000) + i, product: aggItem.product, option: aggItem.option, qty: aggItem.qty, originPrice: 0, sellPrice: aggItem.sellPrice };
          newInv.push(dbItemToSave);
       }
       dbInventoryToUpsert.push(dbItemToSave);
     }
 
-    if (supabase) {
+    if (supabaseClient) {
       try {
-        const { error: mapErr } = await supabase.from('option_mappings').upsert(dbMappingsToUpsert);
-        if (mapErr) throw mapErr;
-        
-        const { error: invErr } = await supabase.from('inventory').upsert(dbInventoryToUpsert);
-        if (invErr) throw invErr;
+        await supabaseClient.from('option_mappings').upsert(dbMappingsToUpsert);
+        await supabaseClient.from('inventory').upsert(dbInventoryToUpsert);
       } catch(err) {
-        console.error(err);
         return alert("DB 일괄 저장에 실패했습니다.");
       }
     }
@@ -543,38 +501,28 @@ export default function App() {
     setInventoryData(newInv);
     setPendingRawData([]);
     setBulkInvInput('');
-    alert("데이터가 성공적으로 매칭 및 저장되었습니다!");
+    alert("데이터가 매칭 및 저장되었습니다!");
   };
 
   const saveMapEdit = async () => {
     const updatedMap = { ...mapEditForm, sellPrice: Number(mapEditForm.sellPrice) };
+    if (supabaseClient) await supabaseClient.from('option_mappings').update(updatedMap).eq('rawId', updatedMap.rawId);
     
-    if (supabase) {
-      const { error } = await supabase.from('option_mappings').update(updatedMap).eq('rawId', updatedMap.rawId);
-      if (error) { console.error(error); return alert("매칭 정보 수정 실패"); }
-    }
-
-    const newMappings = optionMappings.map(m => m.rawId === mapEditForm.rawId ? updatedMap : m);
-    setOptionMappings(newMappings);
+    setOptionMappings(optionMappings.map(m => m.rawId === mapEditForm.rawId ? updatedMap : m));
 
     const invIdx = inventoryData.findIndex(i => i.product === updatedMap.product && i.option === updatedMap.option);
     if (invIdx >= 0) {
        const newInv = [...inventoryData];
        newInv[invIdx].sellPrice = updatedMap.sellPrice;
-       if (supabase) await supabase.from('inventory').update({ sellPrice: updatedMap.sellPrice }).eq('id', newInv[invIdx].id);
+       if (supabaseClient) await supabaseClient.from('inventory').update({ sellPrice: updatedMap.sellPrice }).eq('id', newInv[invIdx].id);
        setInventoryData(newInv);
     }
-    
-    setEditingMapId(null);
-    setMapEditForm(null);
+    setEditingMapId(null); setMapEditForm(null);
   };
 
   const deleteMap = async (rawId) => {
     if(window.confirm("이 매칭 정보를 삭제하시겠습니까?")) {
-      if (supabase) {
-        const { error } = await supabase.from('option_mappings').delete().eq('rawId', rawId);
-        if (error) { console.error(error); return alert("삭제 실패"); }
-      }
+      if (supabaseClient) await supabaseClient.from('option_mappings').delete().eq('rawId', rawId);
       setOptionMappings(optionMappings.filter(m => m.rawId !== rawId));
     }
   };
@@ -586,48 +534,41 @@ export default function App() {
         .reduce((sum, sale) => sum + sale.quantity, 0);
       return { ...item, soldQty, remainQty: item.qty - soldQty };
     });
-    
     return calculated.sort((a, b) => {
-      if (a.product === b.product) {
-        return a.option.localeCompare(b.option);
-      }
+      if (a.product === b.product) return a.option.localeCompare(b.option);
       return a.product.localeCompare(b.product);
     });
   }, [sales, inventoryData]);
 
-  const periodSalesSummary = useMemo(() => {
-    const periodSales = sales.filter(sale => sale.date >= startDate && sale.date <= endDate);
-    const summary = {};
-    let totalQty = 0;
-    let totalAmount = 0;
-    periodSales.forEach(sale => {
-      const key = sale.product;
-      if (!summary[key]) summary[key] = { product: sale.product, quantity: 0, amount: 0 };
-      summary[key].quantity += sale.quantity;
-      summary[key].amount += sale.totalPrice;
-      totalQty += sale.quantity;
-      totalAmount += sale.totalPrice;
-    });
-    return { list: Object.values(summary).sort((a, b) => b.quantity - a.quantity), totalQty, totalAmount };
-  }, [sales, startDate, endDate]);
+  // 💡 선택한 상품/옵션의 현재 남은 재고량을 즉시 확인하기 위한 Memo
+  const selectedRemainQty = useMemo(() => {
+    if (!formData.product || !formData.option) return null;
+    const item = currentInventory.find(i => i.product === formData.product && i.option === formData.option);
+    return item ? item.remainQty : null;
+  }, [formData.product, formData.option, currentInventory]);
 
   const totalSalesSummary = useMemo(() => {
     const summary = {};
-    let totalQty = 0;
-    let totalAmount = 0;
+    let totalQty = 0; let totalAmount = 0;
     sales.forEach(sale => {
       const key = sale.product;
       if (!summary[key]) summary[key] = { product: sale.product, quantity: 0, amount: 0 };
-      summary[key].quantity += sale.quantity;
-      summary[key].amount += sale.totalPrice;
-      totalQty += sale.quantity;
-      totalAmount += sale.totalPrice;
+      summary[key].quantity += sale.quantity; summary[key].amount += sale.totalPrice;
+      totalQty += sale.quantity; totalAmount += sale.totalPrice;
     });
     return { list: Object.values(summary).sort((a, b) => b.quantity - a.quantity), totalQty, totalAmount };
   }, [sales]);
 
   const totalRemainQty = useMemo(() => currentInventory.reduce((acc, curr) => acc + curr.remainQty, 0), [currentInventory]);
-  const todayDetailedSales = useMemo(() => sales.filter(sale => sale.date === today), [sales, today]);
+  
+  const todayDetailedSales = useMemo(() => {
+    const todaysSales = sales.filter(sale => sale.date === today);
+    return todaysSales.sort((a, b) => {
+      if (a.product !== b.product) return a.product.localeCompare(b.product);
+      return a.option.localeCompare(b.option);
+    });
+  }, [sales, today]);
+  
   const todayTotalQty = useMemo(() => todayDetailedSales.reduce((acc, sale) => acc + sale.quantity, 0), [todayDetailedSales]);
   const todayTotalAmount = useMemo(() => todayDetailedSales.reduce((acc, sale) => acc + sale.totalPrice, 0), [todayDetailedSales]);
 
@@ -635,41 +576,30 @@ export default function App() {
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' }); 
   const [searchProduct, setSearchProduct] = useState('');
   const [searchOption, setSearchOption] = useState('');
-  
   const [editingSaleId, setEditingSaleId] = useState(null);
   const [editForm, setEditForm] = useState(null);
-
   const [bulkInvInput, setBulkInvInput] = useState('');
   const [editingInvId, setEditingInvId] = useState(null);
   const [invEditForm, setInvEditForm] = useState(null);
-
   const [editingMapId, setEditingMapId] = useState(null);
   const [mapEditForm, setMapEditForm] = useState(null);
-
   const [showRawDataInput, setShowRawDataInput] = useState(false); 
 
   const handleCloseModal = () => {
-    setMaximizedView(null);
-    setSearchProduct('');
-    setSearchOption('');
-    setSortConfig({ key: 'product', direction: 'asc' });
-    setEditingSaleId(null);
-    setEditForm(null);
-    setEditingInvId(null);
-    setInvEditForm(null);
-    setBulkInvInput('');
-    setPendingRawData([]);
-    setInvTab('stock');
-    setEditingMapId(null);
-    setShowRawDataInput(false);
+    setMaximizedView(null); 
+    setSearchProduct(''); 
+    setSearchOption(''); 
+    setStartDate(''); 
+    setEndDate('');
+    setSortConfig({ key: 'date', direction: 'desc' });
+    setEditingSaleId(null); setEditForm(null); setEditingInvId(null); setInvEditForm(null);
+    setBulkInvInput(''); setPendingRawData([]); setInvTab('stock'); setEditingMapId(null); setShowRawDataInput(false);
   };
 
   const startEdit = (sale) => { setEditingSaleId(sale.id); setEditForm({ ...sale }); };
   const cancelEdit = () => { setEditingSaleId(null); setEditForm(null); };
-
   const startInvEdit = (item) => { setEditingInvId(item.id); setInvEditForm({ ...item }); };
   const cancelInvEdit = () => { setEditingInvId(null); setInvEditForm(null); };
-
   const startMapEdit = (mapObj) => { setEditingMapId(mapObj.rawId); setMapEditForm({ ...mapObj }); };
   const cancelMapEdit = () => { setEditingMapId(null); setMapEditForm(null); };
 
@@ -677,66 +607,46 @@ export default function App() {
     if (!bulkInvInput.trim()) return;
     const lines = bulkInvInput.trim().split('\n').map(l => l.trim()).filter(Boolean);
     const parsed = [];
-
     if (lines[0].includes('\t')) {
       for (let line of lines) {
         if (line.includes('옵션ID')) continue; 
         const parts = line.split('\t').map(p => p.trim());
-        if (parts.length >= 3) {
-           parsed.push({ rawId: parts[0], rawName: parts[1], qty: parseInt(parts[2].replace(/,/g, ''), 10) || 0 });
-        }
+        if (parts.length >= 3) parsed.push({ rawId: parts[0], rawName: parts[1], qty: parseInt(parts[2].replace(/,/g, ''), 10) || 0 });
       }
     } else {
-      let start = 0;
-      if (lines[0].includes('옵션ID') || lines[0] === '옵션ID') start = 3; 
+      let start = 0; if (lines[0].includes('옵션ID') || lines[0] === '옵션ID') start = 3; 
       for (let i = start; i < lines.length; i += 3) {
-         if (lines[i] && lines[i+1] && lines[i+2]) {
-           parsed.push({ rawId: lines[i], rawName: lines[i+1], qty: parseInt(lines[i+2].replace(/,/g, ''), 10) || 0 });
-         }
+         if (lines[i] && lines[i+1] && lines[i+2]) parsed.push({ rawId: lines[i], rawName: lines[i+1], qty: parseInt(lines[i+2].replace(/,/g, ''), 10) || 0 });
       }
     }
-
     if (parsed.length === 0) return alert("인식할 수 있는 데이터가 없습니다.");
 
     const combined = {};
-    parsed.forEach(p => {
-       if (!combined[p.rawId]) combined[p.rawId] = { ...p };
-       else combined[p.rawId].qty += p.qty;
-    });
-    const finalParsed = Object.values(combined);
-
-    const pending = finalParsed.map(item => {
+    parsed.forEach(p => { if (!combined[p.rawId]) combined[p.rawId] = { ...p }; else combined[p.rawId].qty += p.qty; });
+    
+    setPendingRawData(Object.values(combined).map(item => {
        const existingMap = optionMappings.find(m => m.rawId === item.rawId);
-       if (existingMap) {
-          return { ...item, mapped: true, mapTo: { product: existingMap.product, option: existingMap.option, sellPrice: existingMap.sellPrice } };
-       } else {
-          return { ...item, mapped: false, mapTo: { product: '', option: '', sellPrice: 0 } };
-       }
-    });
-
-    setPendingRawData(pending);
+       if (existingMap) return { ...item, mapped: true, mapTo: { product: existingMap.product, option: existingMap.option, sellPrice: existingMap.sellPrice } };
+       else return { ...item, mapped: false, mapTo: { product: '', option: '', sellPrice: 0 } };
+    }));
+    setShowRawDataInput(false); 
   };
 
   const updatePendingMap = (index, field, value) => {
     const newPending = [...pendingRawData];
     newPending[index].mapTo[field] = value;
-    
     if (field === 'option' || field === 'product') {
-       const prod = newPending[index].mapTo.product;
-       const opt = newPending[index].mapTo.option;
+       const prod = newPending[index].mapTo.product; const opt = newPending[index].mapTo.option;
        if (prod && opt) {
           const matchedInv = inventoryData.find(i => i.product === prod && i.option === opt);
-          if (matchedInv && newPending[index].mapTo.sellPrice === 0) {
-            newPending[index].mapTo.sellPrice = matchedInv.sellPrice;
-          }
+          if (matchedInv && newPending[index].mapTo.sellPrice === 0) newPending[index].mapTo.sellPrice = matchedInv.sellPrice;
        }
     }
     setPendingRawData(newPending);
   };
 
   const requestSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    let direction = 'asc'; if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
     setSortConfig({ key, direction });
   };
   const getSortIcon = (key) => {
@@ -745,10 +655,8 @@ export default function App() {
   };
 
   const modalDetailedData = useMemo(() => {
-    // 이제 period 모달은 없으므로 total 모달에서 모든 데이터를 가져온 후 필터링합니다.
     let data = maximizedView === 'total' ? [...sales] : [];
     
-    // 💡 모달창 내에서 기간이 선택되었을 때만 필터링 적용
     if (startDate && endDate) {
       data = data.filter(s => s.date >= startDate && s.date <= endDate);
     }
@@ -756,12 +664,10 @@ export default function App() {
     if (searchProduct.trim()) data = data.filter(s => s.product.toLowerCase().includes(searchProduct.toLowerCase().trim()));
     if (searchOption.trim()) data = data.filter(s => s.option.toLowerCase().includes(searchOption.toLowerCase().trim()));
     
-    // 👇 정렬 로직 수정: 1차 선택된 키(기본 날짜), 2차 상품명(오름차순), 3차 옵션명(오름차순)
     data.sort((a, b) => {
       let valA = a[sortConfig.key] ?? ''; let valB = b[sortConfig.key] ?? '';
       let comparison = 0;
       
-      // 1. 선택된 키 (1차 기준) 비교
       if (typeof valA === 'number' && typeof valB === 'number') {
         comparison = valA - valB;
       } else {
@@ -769,17 +675,8 @@ export default function App() {
         else if (valA > valB) comparison = 1;
       }
 
-      // 1차 기준 값이 다르면 방향(오름/내림)에 따라 즉시 정렬
-      if (comparison !== 0) {
-          return sortConfig.direction === 'asc' ? comparison : -comparison;
-      }
-
-      // 2. 1차 기준이 같을 경우 (예: 날짜가 같음), 2차 기준(상품명 오름차순) 강제 적용
-      if (a.product !== b.product) {
-          return a.product.localeCompare(b.product);
-      }
-      
-      // 3. 2차 기준(상품명)까지 같을 경우, 3차 기준(옵션명 오름차순) 강제 적용
+      if (comparison !== 0) return sortConfig.direction === 'asc' ? comparison : -comparison;
+      if (a.product !== b.product) return a.product.localeCompare(b.product);
       return a.option.localeCompare(b.option);
     });
 
@@ -790,14 +687,10 @@ export default function App() {
     let data = [...currentInventory];
     if (searchProduct.trim()) data = data.filter(item => item.product.toLowerCase().includes(searchProduct.toLowerCase().trim()));
     if (searchOption.trim()) data = data.filter(item => item.option.toLowerCase().includes(searchOption.toLowerCase().trim()));
-
     if (sortConfig.key) {
       data.sort((a, b) => {
-        let valA = a[sortConfig.key] ?? '';
-        let valB = b[sortConfig.key] ?? '';
-        if (typeof valA === 'number' && typeof valB === 'number') {
-           return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
-        }
+        let valA = a[sortConfig.key] ?? ''; let valB = b[sortConfig.key] ?? '';
+        if (typeof valA === 'number' && typeof valB === 'number') return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
         if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -806,11 +699,8 @@ export default function App() {
     return data;
   }, [currentInventory, searchProduct, searchOption, sortConfig]);
 
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-bold">DB 데이터를 불러오는 중입니다...</div>;
-  }
+  if (isLoading && sales.length === 0) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-bold">DB 데이터를 불러오는 중입니다...</div>;
 
-  // --- PIN 인증 로그인 화면 (네모 박스 UI) ---
   if (!isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -818,15 +708,14 @@ export default function App() {
           <div className="flex justify-center mb-4"><Carrot size={48} className="text-orange-500 drop-shadow-sm" /></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">관리자 로그인</h2>
           <p className="text-sm text-gray-500 mb-8">시스템에 접근하려면 PIN 번호를 입력하세요.</p>
-          
           <div className="flex justify-center gap-3 mb-8">
             {[0, 1, 2, 3].map((index) => (
               <input
                 key={index}
                 ref={(el) => (pinRefs.current[index] = el)}
                 type="password"
-                inputMode="numeric"     /* 모바일 숫자 키패드 강제 호출 */
-                pattern="[0-9]*"        /* iOS 호환성 보장 */
+                inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={1}
                 value={pinDigits[index]}
                 onChange={(e) => handlePinChange(index, e.target.value)}
@@ -837,7 +726,6 @@ export default function App() {
               />
             ))}
           </div>
-
           <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-md active:scale-[0.98]">
             접속하기
           </button>
@@ -848,79 +736,95 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 p-4 md:p-8 font-sans">
-      
-      <datalist id="globalProductList">
-        {uniqueProducts.map(p => <option key={p} value={p} />)}
-      </datalist>
-      <datalist id="globalOptionList">
-        {uniqueOptionsAll.map(o => <option key={o} value={o} />)}
-      </datalist>
+      <datalist id="globalProductList">{uniqueProducts.map(p => <option key={p} value={p} />)}</datalist>
+      <datalist id="globalOptionList">{uniqueOptionsAll.map(o => <option key={o} value={o} />)}</datalist>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Carrot className="text-orange-500" />
+            <Carrot className="text-orange-500 shrink-0" />
             당근 재고관리 시스템
+            {/* 💡 상단 새로고침 버튼 (데이터 최신화) */}
+            <button 
+              onClick={fetchAllData} 
+              disabled={isLoading}
+              className="ml-1 p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full transition-colors focus:outline-none" 
+              title="최신 데이터 불러오기"
+            >
+              <RefreshCw size={18} className={isLoading ? "animate-spin text-orange-500" : ""} />
+            </button>
           </h1>
           <div className="mt-2 flex items-center gap-2 text-xs font-semibold">
             {isDbConnected ? <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200"><Database size={12} /> Supabase 연동됨</span> : <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-md border border-orange-200"><AlertCircle size={12} /> DB 연결 오류</span>}
           </div>
         </div>
-        {/* 상단 글로벌 기준일 선택기 삭제됨 */}
       </div>
 
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          
           <div className="lg:col-span-4">
             <div className="bg-white rounded-xl shadow-sm border border-violet-200 overflow-hidden h-full flex flex-col">
               <div className="bg-violet-50 px-4 py-3 border-b border-violet-100 font-semibold text-violet-800 flex items-center gap-2 shrink-0">
                 <Plus size={18} className="text-violet-600" /> 새 판매 등록
               </div>
               <form onSubmit={handleAddSale} className="p-4 flex flex-col gap-4 flex-1">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
                     <label className="block text-xs font-medium text-gray-600 mb-1">판매일</label>
                     <div className="flex items-center border border-gray-300 rounded-md bg-white pr-1.5 transition-colors focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500">
                       <CustomDatePicker startDate={formData.date} onChange={(start) => setFormData(prev => ({ ...prev, date: start }))} wrapperClassName="flex-1" className="w-full px-3 py-1.5 text-sm bg-transparent font-semibold" isRangeMode={false} />
                       <button type="button" onClick={() => setFormData(prev => ({ ...prev, date: today }))} className="shrink-0 px-2.5 py-1 text-xs rounded border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium shadow-sm bg-white">오늘</button>
                     </div>
                   </div>
-                  
-                  <div className="col-span-2">
+                  <div className="md:col-span-2">
                     <label className="block text-xs font-medium text-gray-600 mb-1">상품명</label>
                     <select name="product" value={formData.product} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition" required>
                       <option value="">상품 선택</option>
                       {uniqueProducts.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
-
-                  <div className="col-span-2">
+                  <div className="md:col-span-2">
                     <label className="block text-xs font-medium text-gray-600 mb-1">옵션명</label>
                     <select name="option" value={formData.option} onChange={handleFormChange} disabled={!formData.product} className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition disabled:bg-gray-100" required>
                       <option value="">옵션 선택</option>
                       {availableOptions.map(opt => <option key={opt.id} value={opt.option}>{opt.option}</option>)}
                     </select>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">판매 개수</label>
-                    <input type="number" inputMode="numeric" pattern="[0-9]*" name="quantity" min="1" value={formData.quantity} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition" required />
+                  <div className="grid grid-cols-2 gap-4 md:col-span-2 md:grid-cols-2">
+                    <div>
+                      {/* 💡 남은 재고 시각적 경고 UI 추가 */}
+                      <label className="flex justify-between items-end text-xs font-medium text-gray-600 mb-1">
+                        <span>판매 개수</span>
+                        {selectedRemainQty !== null && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${formData.quantity > selectedRemainQty ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                            잔여: {selectedRemainQty}개
+                          </span>
+                        )}
+                      </label>
+                      <input 
+                        type="number" 
+                        inputMode="numeric" 
+                        pattern="[0-9]*" 
+                        name="quantity" 
+                        min="1" 
+                        value={formData.quantity} 
+                        onChange={handleFormChange} 
+                        className={`w-full border rounded-md p-2 text-sm outline-none transition text-right ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'border-red-400 focus:ring-2 focus:ring-red-500 bg-red-50 text-red-700' : 'border-gray-300 focus:ring-2 focus:ring-violet-500'}`} 
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">단가 (원)</label>
+                      <input type="number" inputMode="numeric" pattern="[0-9]*" name="price" value={formData.price} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition text-right" required />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">판매 금액 (원)</label>
-                    <input type="number" inputMode="numeric" pattern="[0-9]*" name="price" value={formData.price} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition" required />
-                  </div>
-
-                  <div className="col-span-2">
+                  <div className="md:col-span-2">
                     <label className="block text-xs font-medium text-gray-600 mb-1">비고 (선택)</label>
                     <input type="text" name="note" value={formData.note} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition" placeholder="입금 방식 등..." />
                   </div>
                 </div>
-                
-                <div className="mt-auto pt-2">
-                  <button type="submit" className="w-full bg-violet-600 hover:bg-violet-700 text-white font-medium py-2 rounded-md transition-colors flex items-center justify-center gap-2">
+                <div className="mt-auto pt-4 md:pt-2">
+                  <button type="submit" className="w-full bg-violet-600 hover:bg-violet-700 text-white font-medium py-3 md:py-2 rounded-md transition-colors flex items-center justify-center gap-2 shadow-sm">
                     판매 내역 추가
                   </button>
                 </div>
@@ -930,18 +834,11 @@ export default function App() {
 
           <div className="lg:col-span-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col">
-              
               <div className="flex bg-gray-100 pt-2 px-3 gap-1 border-b border-gray-200 shrink-0">
-                <button
-                  onClick={() => setSummaryTab('sales')}
-                  className={`px-4 py-2.5 rounded-t-lg font-bold text-sm transition-colors flex items-center gap-2 ${summaryTab === 'sales' ? 'bg-white text-gray-800 border-t border-x border-gray-200 shadow-[0_4px_0_0_white] relative z-10' : 'text-gray-500 hover:bg-gray-200/50'}`}
-                >
+                <button onClick={() => setSummaryTab('sales')} className={`px-4 py-2.5 rounded-t-lg font-bold text-sm transition-colors flex items-center gap-2 ${summaryTab === 'sales' ? 'bg-white text-gray-800 border-t border-x border-gray-200 shadow-[0_4px_0_0_white] relative z-10' : 'text-gray-500 hover:bg-gray-200/50'}`}>
                   <PieChart size={16} /> 판매 요약
                 </button>
-                <button
-                  onClick={() => setSummaryTab('settlement')}
-                  className={`px-4 py-2.5 rounded-t-lg font-bold text-sm transition-colors flex items-center gap-2 ${summaryTab === 'settlement' ? 'bg-white text-gray-800 border-t border-x border-gray-200 shadow-[0_4px_0_0_white] relative z-10' : 'text-gray-500 hover:bg-gray-200/50'}`}
-                >
+                <button onClick={() => setSummaryTab('settlement')} className={`px-4 py-2.5 rounded-t-lg font-bold text-sm transition-colors flex items-center gap-2 ${summaryTab === 'settlement' ? 'bg-white text-gray-800 border-t border-x border-gray-200 shadow-[0_4px_0_0_white] relative z-10' : 'text-gray-500 hover:bg-gray-200/50'}`}>
                   <Database size={16} /> 정산 현황
                 </button>
               </div>
@@ -978,39 +875,45 @@ export default function App() {
                       <span>{formatDateWithDay(today)}</span>
                     </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto min-h-0 bg-white">
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 bg-white relative">
                     <table className="w-full text-sm text-left">
-                      <thead className="bg-white sticky top-0 shadow-sm text-gray-500">
+                      <thead className="bg-white sticky top-0 shadow-sm text-gray-500 z-10">
                         <tr>
-                          {/* 모바일: 상품명 옆에 '/ 옵션' 표시 */}
-                          <th className="px-4 py-3 font-medium whitespace-nowrap">상품명 <span className="md:hidden text-[10px] font-normal text-gray-400 ml-1">/ 옵션</span></th>
-                          {/* 옵션명과 비고는 PC(md 이상)에서만 노출 */}
-                          <th className="px-4 py-3 font-medium whitespace-nowrap hidden md:table-cell">옵션명</th>
-                          <th className="px-4 py-3 font-medium text-right whitespace-nowrap">수량</th>
-                          <th className="px-4 py-3 font-medium text-right whitespace-nowrap">금액</th>
-                          <th className="pl-8 pr-4 py-3 font-medium whitespace-nowrap hidden md:table-cell">비고</th>
-                          <th className="px-2 py-3 text-center w-10"></th>
+                          <th className="px-4 py-3 font-medium w-[45%] md:w-[25%]">상품명 <span className="md:hidden text-[10px] font-normal text-gray-400 ml-1">/ 옵션</span></th>
+                          <th className="px-4 py-3 font-medium hidden md:table-cell md:w-[20%]">옵션명</th>
+                          <th className="px-2 py-3 font-medium text-center w-[15%]">수량</th>
+                          <th className="px-2 py-3 font-medium text-right w-[25%] md:w-[15%]">금액</th>
+                          <th className="pl-6 pr-2 py-3 font-medium hidden md:table-cell md:w-[15%]">비고</th>
+                          <th className="px-2 py-3 text-center w-[15%] md:w-[10%]"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {todayDetailedSales.length === 0 ? (
-                          <tr><td colSpan="6" className="text-center text-gray-400 py-10">오늘 등록된 판매 내역이 없습니다.</td></tr>
+                          <tr>
+                            <td colSpan="6" className="py-16">
+                              {/* 💡 예쁜 데이터 없음 UI 적용 */}
+                              <div className="flex flex-col items-center justify-center text-gray-400">
+                                <Carrot size={40} className="text-emerald-200 mb-3" strokeWidth={1.5} />
+                                <span className="text-sm font-medium">오늘 등록된 판매 내역이 없습니다.</span>
+                              </div>
+                            </td>
+                          </tr>
                         ) : (
                           todayDetailedSales.map((sale) => (
                             <tr key={sale.id} className="hover:bg-emerald-50/50 group transition-colors">
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <div className="font-medium text-gray-800 leading-tight">{sale.product}</div>
-                                {/* 모바일에서만 상품명 밑에 옵션명이 작게 나타남 */}
                                 <div className="text-[11px] text-gray-500 mt-0.5 md:hidden">{sale.option}</div>
+                                <div className="text-[10px] text-gray-400 mt-0.5 md:hidden truncate max-w-[150px]">{sale.note}</div>
                               </td>
-                              {/* PC에서만 보이던 옵션명 칸 */}
                               <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{sale.option}</td>
-                              <td className="px-4 py-3 text-right font-medium">{sale.quantity}</td>
-                              <td className="px-4 py-3 text-right text-emerald-600 font-bold">{sale.totalPrice.toLocaleString()}원</td>
-                              {/* PC에서만 보이던 비고 칸 */}
-                              <td className="pl-8 pr-4 py-3 text-gray-500 text-xs truncate max-w-[150px] hidden md:table-cell" title={sale.note}>{sale.note}</td>
+                              <td className="px-2 py-3 text-center font-medium">{sale.quantity}</td>
+                              <td className="px-2 py-3 text-right">
+                                <div className="text-emerald-600 font-bold whitespace-nowrap">{sale.totalPrice.toLocaleString()}원</div>
+                              </td>
+                              <td className="pl-6 pr-2 py-3 text-gray-500 text-xs truncate hidden md:table-cell" title={sale.note}>{sale.note}</td>
                               <td className="px-2 py-3 text-center">
-                                <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-red-500 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 md:p-1" title="내역 삭제"><Trash2 size={16} /></button>
+                                <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 hover:text-red-500 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 md:p-1"><Trash2 size={16} /></button>
                               </td>
                             </tr>
                           ))
@@ -1021,11 +924,8 @@ export default function App() {
                 </>
               )}
 
-              {/* 탭 2: 정산 현황 화면 */}
               {summaryTab === 'settlement' && (
                 <div className="flex-1 p-4 md:p-6 bg-white overflow-y-auto">
-                  
-                  {/* 상단 헤더 및 저장 버튼 */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
                     <div>
                       <h2 className="text-base font-bold text-gray-800 flex items-center gap-1.5"><Database size={18} className="text-gray-400" /> 정산 및 시재 점검</h2>
@@ -1041,12 +941,11 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* 1. 자산 입력 영역 (밀도 높고 차분한 디자인) */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
                     {[
-                      { key: 'intermediate', label: '대표님 송금액', desc: '입금 완료한 정산금', icon: <Coins size={16} className="text-gray-500" />, focusColor: 'focus:border-gray-800' },
-                      { key: 'account', label: '내 계좌 잔액', desc: '현재 통장 잔고', icon: <Landmark size={16} className="text-gray-500" />, focusColor: 'focus:border-gray-800' },
-                      { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={16} className="text-gray-500" />, focusColor: 'focus:border-gray-800' }
+                      { key: 'intermediate', label: '대표님 송금액', desc: '입금 완료한 정산금', icon: <Coins size={16} className="text-gray-500" /> },
+                      { key: 'account', label: '내 계좌 잔액', desc: '현재 통장 잔고', icon: <Landmark size={16} className="text-gray-500" /> },
+                      { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={16} className="text-gray-500" /> }
                     ].map((item) => (
                       <div key={item.key} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col justify-between h-full">
                         <div className="flex justify-between items-start mb-3">
@@ -1062,7 +961,6 @@ export default function App() {
                             inputMode="numeric"
                             value={settlementData[item.key] === 0 ? '' : settlementData[item.key].toLocaleString()}
                             onChange={(e) => {
-                              // 입력값에서 숫자만 추출하여 상태 업데이트 (천단위 콤마 처리용)
                               const rawValue = e.target.value.replace(/[^0-9]/g, '');
                               setSettlementData({ ...settlementData, [item.key]: Number(rawValue) || 0 });
                             }}
@@ -1075,25 +973,21 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* 2. 자동 계산 결과 영역 (차분한 컬러 매칭) */}
                   {(() => {
                     const remitted = Number(settlementData.intermediate) || 0; 
                     const inAccount = Number(settlementData.account) || 0;     
                     const inCash = Number(settlementData.cash) || 0;           
                     const totalSales = totalSalesSummary.totalAmount || 0;     
-
                     const unsettledAmount = totalSales - remitted;
                     const totalAsset = inAccount + inCash;
                     const tillDifference = totalAsset - unsettledAmount;
 
-                    // 상태에 따른 컬러맵 지정
                     const diffColor = tillDifference === 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 
                                       tillDifference > 0 ? 'text-blue-600 bg-blue-50 border-blue-100' : 
                                       'text-red-600 bg-red-50 border-red-100';
 
                     return (
                       <div className="flex flex-col gap-2">
-                        {/* 미정산금 & 보유 자산 가로 배치 (PC 기준) */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div className="px-4 py-3 bg-white border border-gray-200 rounded-lg flex justify-between items-center shadow-sm">
                             <div>
@@ -1106,7 +1000,6 @@ export default function App() {
                             </div>
                             <div className="font-bold text-gray-800">{unsettledAmount.toLocaleString()}원</div>
                           </div>
-
                           <div className="px-4 py-3 bg-white border border-gray-200 rounded-lg flex justify-between items-center shadow-sm">
                             <div>
                               <div className="flex items-center gap-1.5 font-bold text-gray-700 text-sm">
@@ -1117,7 +1010,6 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* 최종 시재 (오차) 결과 */}
                         <div className={`px-5 py-4 border rounded-xl flex justify-between items-center shadow-sm mt-1 transition-colors ${diffColor}`}>
                           <div>
                             <div className="font-bold flex items-center gap-1.5 text-sm">
@@ -1143,26 +1035,32 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            {/* 기간 판매 요약 박스 삭제됨 */}
-
-            <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-hidden relative">
-               <div className="bg-blue-50 px-4 py-3 border-b border-blue-100 font-semibold text-blue-800 flex justify-between items-center">
+          <div className="lg:col-span-4">
+            <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-hidden relative h-full flex flex-col">
+               <div className="bg-blue-50 px-4 py-3 border-b border-blue-100 font-semibold text-blue-800 flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-2"><Archive size={18} /> 누적 판매 요약</div>
                 <button onClick={() => setMaximizedView('total')} className="text-blue-600 hover:text-blue-900 hover:bg-blue-100 p-1.5 rounded transition-colors" title="상세 내역 확대 보기"><Maximize2 size={16} /></button>
               </div>
-               <div className="p-0">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-blue-700 bg-blue-50/50">
+               <div className="p-0 flex-1 overflow-y-auto min-h-0">
+                <table className="w-full text-sm text-left min-w-[280px]">
+                  <thead className="text-[11px] text-blue-700 bg-blue-50/50 sticky top-0">
                     <tr>
                       <th className="px-3 py-2 font-medium">상품명</th>
-                      <th className="px-3 py-2 font-medium text-right whitespace-nowrap">수량</th>
+                      <th className="px-3 py-2 font-medium text-center whitespace-nowrap">수량</th>
                       <th className="px-3 py-2 font-medium text-right whitespace-nowrap">금액</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {totalSalesSummary.list.length === 0 ? (
-                      <tr><td colSpan="3" className="text-center text-gray-400 py-4">데이터 없음</td></tr>
+                      <tr>
+                        <td colSpan="3" className="py-16">
+                          {/* 💡 예쁜 데이터 없음 UI 적용 */}
+                          <div className="flex flex-col items-center justify-center text-gray-400">
+                            <Archive size={36} className="text-blue-200 mb-2" strokeWidth={1.5} />
+                            <span className="text-[11px] font-medium">누적된 판매 데이터가 없습니다.</span>
+                          </div>
+                        </td>
+                      </tr>
                     ) : (
                       totalSalesSummary.list.map((item, idx) => {
                         const percent = totalSalesSummary.totalQty > 0 ? Math.round((item.quantity / totalSalesSummary.totalQty) * 100) : 0;
@@ -1172,17 +1070,17 @@ export default function App() {
                               <div className="font-bold text-gray-800 break-keep">{item.product}</div>
                               <div className="text-[11px] text-blue-600/80 font-bold break-keep mt-0.5">판매 비중: {percent}%</div>
                             </td>
-                            <td className="px-3 py-2 text-right font-bold whitespace-nowrap">{item.quantity}</td>
-                            <td className="px-3 py-2 text-right text-blue-600 font-bold whitespace-nowrap">{item.amount.toLocaleString()}원</td>
+                            <td className="px-3 py-2 text-center font-bold align-top">{item.quantity}</td>
+                            <td className="px-3 py-2 text-right text-blue-600 font-bold whitespace-nowrap align-top">{item.amount.toLocaleString()}원</td>
                           </tr>
                         );
                       })
                     )}
                   </tbody>
-                  <tfoot className="bg-blue-50/50 font-bold border-t border-blue-100">
+                  <tfoot className="bg-blue-50/50 font-bold border-t border-blue-100 sticky bottom-0">
                     <tr>
-                      <td className="px-3 py-3 text-blue-800 whitespace-nowrap">누적 합계</td>
-                      <td className="px-3 py-3 text-right text-blue-800 whitespace-nowrap">{totalSalesSummary.totalQty}</td>
+                      <td className="px-3 py-3 text-blue-800 text-xs whitespace-nowrap">누적 합계</td>
+                      <td className="px-3 py-3 text-center text-blue-800 whitespace-nowrap">{totalSalesSummary.totalQty}</td>
                       <td className="px-3 py-3 text-right text-blue-700 whitespace-nowrap">{totalSalesSummary.totalAmount.toLocaleString()}원</td>
                     </tr>
                   </tfoot>
@@ -1197,30 +1095,43 @@ export default function App() {
                 <div className="flex items-center gap-2"><Box size={18} /> 실시간 재고 현황</div>
                 <button onClick={() => setMaximizedView('inventory')} className="text-orange-600 hover:text-orange-900 hover:bg-orange-100 p-1.5 rounded transition-colors" title="재고 관리 확대 보기"><Maximize2 size={16} /></button>
               </div>
-              <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
-                <table className="w-full text-sm text-left table-fixed min-w-[340px] md:min-w-[600px]">
+              <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0 relative">
+                <table className="w-full min-h-full text-sm text-left table-fixed">
                   <thead className="text-xs text-orange-700 bg-orange-50/50 sticky top-0 shadow-sm z-10">
                     <tr>
-                      <th className="px-4 py-3 font-medium whitespace-nowrap w-[50%] md:w-[30%]">상품명 <span className="md:hidden text-[10px] font-normal text-orange-600/80 ml-1">/ 옵션</span></th>
-                      <th className="px-4 py-3 font-medium whitespace-nowrap hidden md:table-cell md:w-[30%]">옵션명</th>
-                      <th className="px-2 py-3 font-medium text-center whitespace-nowrap w-[25%] md:w-[20%]">총 수량</th>
-                      <th className="px-2 py-3 font-medium text-center whitespace-nowrap w-[25%] md:w-[20%]">남은 수량</th>
+                      <th className="px-4 py-3 font-medium w-[45%] md:w-[30%]">상품명 <span className="md:hidden text-[10px] font-normal text-orange-600/80 ml-1">/ 옵션</span></th>
+                      <th className="px-4 py-3 font-medium hidden md:table-cell md:w-[30%]">옵션명</th>
+                      <th className="px-2 py-3 font-medium text-center w-[25%] md:w-[20%]">총 수량</th>
+                      <th className="px-2 py-3 font-medium text-center w-[30%] md:w-[20%]">남은 수량</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {currentInventory.map((item) => (
-                      <tr key={item.id} className="hover:bg-orange-50/50 transition-colors">
-                        <td className="px-4 py-2">
-                          <div className="font-bold text-gray-800 leading-tight break-keep">{item.product}</div>
-                          <div className="text-[11px] text-gray-500 mt-0.5 md:hidden break-keep">{item.option}</div>
-                        </td>
-                        <td className="px-4 py-2 text-gray-600 text-xs hidden md:table-cell break-keep">{item.option}</td>
-                        <td className="px-2 py-2 text-center font-semibold text-gray-600">{item.qty}</td>
-                        <td className="px-2 py-2 text-center">
-                          <span className={`inline-flex items-center justify-center px-2 py-1 rounded font-bold ${item.remainQty === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{item.remainQty}</span>
+                    {currentInventory.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="py-20">
+                          {/* 💡 예쁜 데이터 없음 UI 적용 */}
+                          <div className="flex flex-col items-center justify-center text-gray-400">
+                            <Box size={40} className="text-orange-200 mb-3" strokeWidth={1.5} />
+                            <span className="text-sm font-medium">등록된 재고가 없습니다.</span>
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      currentInventory.map((item) => (
+                        <tr key={item.id} className="hover:bg-orange-50/50 transition-colors">
+                          <td className="px-4 py-2">
+                            <div className="font-bold text-gray-800 leading-tight break-keep">{item.product}</div>
+                            <div className="text-[11px] text-gray-500 mt-0.5 md:hidden break-keep">{item.option}</div>
+                          </td>
+                          <td className="px-4 py-2 text-gray-600 text-xs hidden md:table-cell break-keep">{item.option}</td>
+                          <td className="px-2 py-2 text-center font-semibold text-gray-600">{item.qty}</td>
+                          <td className="px-2 py-2 text-center">
+                            <span className={`inline-flex items-center justify-center px-2 py-1 rounded font-bold ${item.remainQty === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{item.remainQty}</span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                    <tr className="h-full pointer-events-none"><td colSpan="4" className="p-0 border-0"></td></tr>
                   </tbody>
                   <tfoot className="bg-orange-50/80 border-t-2 border-orange-200 font-bold text-gray-800 sticky bottom-0 z-10">
                     <tr>
@@ -1240,14 +1151,14 @@ export default function App() {
       {/* --- 모달 (상세 보기) 영역 --- */}
       {maximizedView && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-6 lg:p-8">
-          <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[85vh] flex flex-col overflow-hidden border-2 ${maximizedView === 'period' ? 'border-emerald-400' : maximizedView === 'total' ? 'border-blue-400' : 'border-orange-400'}`}>
+          <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[85vh] flex flex-col overflow-hidden border-2 ${maximizedView === 'total' ? 'border-blue-400' : 'border-orange-400'}`}>
             
             <div className={`px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center border-b shrink-0 ${maximizedView === 'total' ? 'bg-blue-50 border-blue-100 text-blue-900' : 'bg-orange-50 border-orange-100 text-orange-900'}`}>
               <div className="flex items-center gap-2 sm:gap-3">
                 {maximizedView === 'total' ? <Archive size={20} className="text-blue-600 sm:w-6 sm:h-6" /> : <Box size={20} className="text-orange-600 sm:w-6 sm:h-6" />}
                 <div>
                   <h2 className="text-base sm:text-xl font-bold leading-tight">
-                    {maximizedView === 'total' ? "전체 누적 판매 상세 내역" : "재고 상세 관리 및 추가"}
+                    {maximizedView === 'total' ? "판매 상세 내역" : "재고 상세 관리 및 추가"}
                   </h2>
                 </div>
               </div>
@@ -1284,15 +1195,9 @@ export default function App() {
 
                     {showRawDataInput && (
                       <div className="px-3 sm:px-6 py-3 sm:py-4 bg-orange-50/30 border-b border-gray-200 shrink-0 shadow-inner flex flex-col gap-3">
-                        <div className="flex gap-6 border-b border-gray-200 pb-3">
-                          <label className="flex items-center gap-1.5 cursor-pointer font-bold text-sm text-gray-700 hover:text-orange-600 transition-colors">
-                            <input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-4 h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
-                            <PenTool size={16} className={addMode === 'manual' ? "text-orange-500" : "text-gray-400"} /> 수동 입력
-                          </label>
-                          <label className="flex items-center gap-1.5 cursor-pointer font-bold text-sm text-gray-700 hover:text-orange-600 transition-colors">
-                            <input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-4 h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
-                            <ClipboardList size={16} className={addMode === 'bulk' ? "text-orange-500" : "text-gray-400"} /> 텍스트 일괄 붙여넣기
-                          </label>
+                        <div className="flex gap-4 border-b border-gray-200 pb-2">
+                          <label className="flex items-center gap-1.5 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 hover:text-orange-600 transition-colors"><input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-3.5 h-3.5 text-orange-500 cursor-pointer" /> <PenTool size={16} className={addMode === 'manual' ? "text-orange-500" : "text-gray-400"} /> 수동 입력</label>
+                          <label className="flex items-center gap-1.5 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 hover:text-orange-600 transition-colors"><input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-3.5 h-3.5 text-orange-500 cursor-pointer" /> <ClipboardList size={16} className={addMode === 'bulk' ? "text-orange-500" : "text-gray-400"} /> 텍스트 일괄 붙여넣기</label>
                         </div>
                         {addMode === 'manual' ? (
                           <form onSubmit={handleAddManualInv} className="grid grid-cols-2 sm:flex gap-3 items-end bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
@@ -1325,9 +1230,7 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* 표와 요약을 하나의 테이블 안에 넣어서 라인이 100% 일치하도록 구성 */}
                     <div className="flex-1 overflow-x-auto overflow-y-auto bg-white relative">
-                      {/* 💡 테이블이 부모 끝까지 꽉 차도록 min-h-full 속성을 추가합니다 */}
                       <table className="w-full min-h-full text-sm text-left table-fixed min-w-[340px] sm:min-w-[700px]">
                         <thead className="bg-gray-50 sticky top-0 shadow-sm text-gray-600 border-b border-gray-200 z-10">
                           <tr>
@@ -1341,7 +1244,15 @@ export default function App() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {processedInventory.length === 0 ? (
-                            <tr><td colSpan="6" className="text-center text-gray-400 py-10 sm:py-20 text-sm">재고 데이터가 없습니다.</td></tr>
+                            <tr>
+                              <td colSpan="6" className="py-24">
+                                {/* 💡 모달 데이터 없음 UI 개선 */}
+                                <div className="flex flex-col items-center justify-center text-gray-400">
+                                  <Search size={48} className="text-orange-200 mb-4" strokeWidth={1.5} />
+                                  <span className="text-base font-medium">해당 조건의 재고 데이터가 없습니다.</span>
+                                </div>
+                              </td>
+                            </tr>
                           ) : (
                             processedInventory.map((item) => {
                               if (editingInvId === item.id) {
@@ -1386,15 +1297,11 @@ export default function App() {
                               );
                             })
                           )}
-                          {/* 💡 남은 공간을 팽창해서 차지하며 tfoot을 바닥으로 밀어내는 투명 더미 행 */}
                           <tr className="h-full pointer-events-none"><td colSpan="6" className="p-0 border-0"></td></tr>
                         </tbody>
-                        
-                        {/* 하단 요약 박스를 완전히 표 내부(tfoot)로 편입시켜 칸 라인을 100% 일치시킵니다 */}
-                        </table>
+                      </table>
                     </div>
                     
-                    {/* 💡 표 바깥으로 빼낸 100% 하단 고정 요약 박스 */}
                     <div className="bg-orange-50/90 border-t-2 border-orange-200 font-bold text-gray-800 px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center shrink-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                       <div className="text-orange-900 text-[11px] sm:text-sm">
                         <span className="sm:hidden">총 {processedInventory.length}건</span>
@@ -1445,26 +1352,38 @@ export default function App() {
                         <tr><th className="px-4 sm:px-6 py-3">옵션ID/원본명</th><th className="px-4 py-3">매칭 상품</th><th className="px-4 py-3">매칭 옵션</th><th className="px-4 py-3 text-right">단가</th><th className="px-4 py-3 text-center">관리</th></tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {optionMappings.map((mapItem) => {
-                            if (editingMapId === mapItem.rawId) {
+                        {optionMappings.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="py-24">
+                              {/* 💡 예쁜 매칭 데이터 없음 UI 적용 */}
+                              <div className="flex flex-col items-center justify-center text-gray-400">
+                                <Link size={48} className="text-gray-200 mb-4" strokeWidth={1.5} />
+                                <span className="text-base font-medium">저장된 데이터 매칭 정보가 없습니다.</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          optionMappings.map((mapItem) => {
+                              if (editingMapId === mapItem.rawId) {
+                                return (
+                                  <tr key={mapItem.rawId} className="bg-yellow-50/50">
+                                    <td className="px-4 py-2 text-xs"><div className="font-mono text-gray-500">{mapItem.rawId}</div><div className="font-bold truncate max-w-[150px]">{mapItem.rawName}</div></td>
+                                    <td className="px-2 py-2"><input type="text" value={mapEditForm.product} onChange={e => setMapEditForm({...mapEditForm, product: e.target.value})} className="w-full border rounded px-1 py-1 text-xs" /></td>
+                                    <td className="px-2 py-2"><input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full border rounded px-1 py-1 text-xs" /></td>
+                                    <td className="px-2 py-2"><input type="number" value={mapEditForm.sellPrice} onChange={e => setMapEditForm({...mapEditForm, sellPrice: e.target.value})} className="w-20 border rounded px-1 py-1 text-xs text-right" /></td>
+                                    <td className="px-2 py-2 text-center"><button onClick={saveMapEdit} className="text-emerald-600 p-1"><Check size={14}/></button><button onClick={cancelMapEdit} className="text-red-500 p-1"><X size={14}/></button></td>
+                                  </tr>
+                                );
+                              }
                               return (
-                                <tr key={mapItem.rawId} className="bg-yellow-50/50">
+                                <tr key={mapItem.rawId} className="hover:bg-orange-50/40 group">
                                   <td className="px-4 py-2 text-xs"><div className="font-mono text-gray-500">{mapItem.rawId}</div><div className="font-bold truncate max-w-[150px]">{mapItem.rawName}</div></td>
-                                  <td className="px-2 py-2"><input type="text" value={mapEditForm.product} onChange={e => setMapEditForm({...mapEditForm, product: e.target.value})} className="w-full border rounded px-1 py-1 text-xs" /></td>
-                                  <td className="px-2 py-2"><input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full border rounded px-1 py-1 text-xs" /></td>
-                                  <td className="px-2 py-2"><input type="number" value={mapEditForm.sellPrice} onChange={e => setMapEditForm({...mapEditForm, sellPrice: e.target.value})} className="w-20 border rounded px-1 py-1 text-xs text-right" /></td>
-                                  <td className="px-2 py-2 text-center"><button onClick={saveMapEdit} className="text-emerald-600 p-1"><Check size={14}/></button><button onClick={cancelMapEdit} className="text-red-500 p-1"><X size={14}/></button></td>
+                                  <td className="px-4 py-2 text-xs font-bold">{mapItem.product}</td><td className="px-4 py-2 text-xs">{mapItem.option}</td><td className="px-4 py-2 text-xs text-right">{mapItem.sellPrice.toLocaleString()}원</td>
+                                  <td className="px-4 py-2 text-center"><button onClick={() => startMapEdit(mapItem)} className="text-gray-400 p-1"><Edit2 size={14}/></button><button onClick={() => deleteMap(mapItem.rawId)} className="text-gray-400 p-1"><Trash2 size={14}/></button></td>
                                 </tr>
                               );
-                            }
-                            return (
-                              <tr key={mapItem.rawId} className="hover:bg-orange-50/40 group">
-                                <td className="px-4 py-2 text-xs"><div className="font-mono text-gray-500">{mapItem.rawId}</div><div className="font-bold truncate max-w-[150px]">{mapItem.rawName}</div></td>
-                                <td className="px-4 py-2 text-xs font-bold">{mapItem.product}</td><td className="px-4 py-2 text-xs">{mapItem.option}</td><td className="px-4 py-2 text-xs text-right">{mapItem.sellPrice.toLocaleString()}원</td>
-                                <td className="px-4 py-2 text-center"><button onClick={() => startMapEdit(mapItem)} className="text-gray-400 p-1"><Edit2 size={14}/></button><button onClick={() => deleteMap(mapItem.rawId)} className="text-gray-400 p-1"><Trash2 size={14}/></button></td>
-                              </tr>
-                            );
-                        })}
+                          })
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1472,10 +1391,8 @@ export default function App() {
               </div>
             ) : (
               <div className="flex-1 flex flex-col overflow-hidden bg-white">
-                 {/* 💡 테이블 헤더(z-10)보다 위로 올라오도록 이 구역의 z-index를 z-50으로 대폭 올렸습니다 */}
                  <div className="px-4 sm:px-6 py-3 bg-white border-b border-gray-100 flex flex-col sm:flex-row gap-3 justify-between items-center shrink-0 shadow-sm z-50 relative">
                    <div className="flex flex-wrap w-full sm:w-auto gap-2 items-center">
-                     {/* 💡 날짜(기간) 필터 컴포넌트를 여기에 배치합니다 */}
                      <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200 w-full sm:w-auto">
                        <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">조회 기간:</span>
                        <CustomDatePicker startDate={startDate} endDate={endDate} isRangeMode={true} onChange={(start, end) => { setStartDate(start); setEndDate(end); }} dropdownAlign="left" className="text-xs font-bold text-gray-800 flex-1 justify-center" />
@@ -1483,7 +1400,7 @@ export default function App() {
                          <button onClick={() => { setStartDate(''); setEndDate(''); }} className="ml-1 text-gray-400 hover:text-red-500 transition-colors" title="날짜 초기화"><X size={14}/></button>
                        )}
                      </div>
-                     
+
                      <div className="relative flex-1 sm:w-32 min-w-[120px]">
                        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"/>
                        <input type="text" value={searchProduct} onChange={e => setSearchProduct(e.target.value)} placeholder="상품명 검색" className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-md text-xs outline-none focus:ring-2 focus:ring-blue-500/50"/>
@@ -1501,7 +1418,6 @@ export default function App() {
                  </div>
 
                  <div className="flex-1 overflow-x-auto overflow-y-auto bg-white p-0 relative">
-                   {/* 💡 테이블이 부모 끝까지 꽉 차도록 min-h-full 속성을 추가합니다 */}
                    <table className="w-full min-h-full text-sm text-left table-fixed min-w-[320px] sm:min-w-[700px]">
                      <thead className="bg-gray-50 sticky top-0 shadow-sm font-bold text-gray-600 z-10 border-b border-gray-200">
                        <tr>
@@ -1516,7 +1432,15 @@ export default function App() {
                      </thead>
                      <tbody className="divide-y divide-gray-100">
                        {modalDetailedData.length === 0 ? (
-                         <tr><td colSpan="7" className="text-center text-gray-400 py-10 sm:py-20 text-sm">해당 조건의 판매 내역이 없습니다.</td></tr>
+                         <tr>
+                           <td colSpan="7" className="py-24">
+                             {/* 💡 모달 데이터 없음 UI 개선 */}
+                             <div className="flex flex-col items-center justify-center text-gray-400">
+                               <Search size={48} className="text-blue-200 mb-4" strokeWidth={1.5} />
+                               <span className="text-base font-medium">해당 조건의 판매 내역이 없습니다.</span>
+                             </div>
+                           </td>
+                         </tr>
                        ) : (
                          modalDetailedData.map(s => {
                             if (editingSaleId === s.id) {
@@ -1528,7 +1452,7 @@ export default function App() {
                                     <input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full border rounded px-1 py-1 text-xs mb-1 sm:hidden" placeholder="옵션명" />
                                     <input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full border rounded px-1 py-1 text-xs sm:hidden" placeholder="비고" />
                                   </td>
-                                  <td className="px-1 py-1 hidden sm:table-cell"><input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full border rounded px-1 py-1 text-xs" /></td>
+                                  <td className="px-1 py-1 hidden sm:table-cell"><input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full border px-1 py-1 text-xs" /></td>
                                   <td className="px-1 py-1 text-center"><input type="number" inputMode="numeric" pattern="[0-9]*" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} className="w-full min-w-[40px] max-w-[60px] mx-auto border rounded px-1 py-1 text-xs text-center font-bold" /></td>
                                   <td className="px-1 py-1 text-right"><input type="number" inputMode="numeric" pattern="[0-9]*" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full min-w-[60px] max-w-[80px] ml-auto border rounded px-1 py-1 text-xs text-right" /></td>
                                   <td className="px-1 py-1 hidden sm:table-cell"><input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full border rounded px-1 py-1 text-xs" /></td>
@@ -1551,7 +1475,7 @@ export default function App() {
                                 </td>
                                 <td className="px-2 sm:px-4 py-2.5 sm:py-3.5 text-gray-600 text-xs sm:text-sm break-keep hidden sm:table-cell">{s.option}</td>
                                 <td className="px-1 sm:px-4 py-2.5 sm:py-3.5 text-center font-semibold text-gray-900 text-xs sm:text-sm">{s.quantity}</td>
-                                <td className={`px-1 sm:px-4 py-2.5 sm:py-3.5 text-right font-bold whitespace-nowrap text-xs sm:text-sm ${maximizedView === 'period' ? 'text-emerald-600' : 'text-blue-600'}`}>{s.totalPrice.toLocaleString()}원</td>
+                                <td className="px-1 sm:px-4 py-2.5 sm:py-3.5 text-right font-bold whitespace-nowrap text-xs sm:text-sm text-blue-600">{s.totalPrice.toLocaleString()}원</td>
                                 <td className="px-3 sm:px-4 py-2.5 sm:py-3.5 text-gray-500 text-[11px] sm:text-xs truncate hidden sm:table-cell" title={s.note}>{s.note || '-'}</td>
                                 <td className="px-1 sm:px-2 py-2.5 sm:py-3.5 text-center">
                                   <div className="flex justify-center items-center gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1563,19 +1487,16 @@ export default function App() {
                             );
                          })
                        )}
-                       {/* 💡 남은 공간을 팽창해서 차지하며 tfoot을 바닥으로 밀어내는 투명 더미 행 */}
                        <tr className="h-full pointer-events-none"><td colSpan="7" className="p-0 border-0"></td></tr>
                      </tbody>
-                     
-                     </table>
+                   </table>
                  </div>
 
-                 {/* 💡 표 바깥으로 빼낸 100% 하단 고정 요약 박스 */}
                  {(() => {
                     const tQ = modalDetailedData.reduce((a, c) => a + c.quantity, 0); 
                     const tA = modalDetailedData.reduce((a, c) => a + c.totalPrice, 0);
                     return (
-                      <div className={`border-t-2 font-bold px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center shrink-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] ${maximizedView === 'period' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
+                      <div className="border-t-2 font-bold px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center shrink-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] bg-blue-50 border-blue-200 text-blue-900">
                         <div className="text-[11px] sm:text-sm">
                           <span className="opacity-80">개당 평균가: </span> 
                           <span>{tQ > 0 ? Math.round(tA/tQ).toLocaleString() : 0}원</span>
