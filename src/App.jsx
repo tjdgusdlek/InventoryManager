@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Calendar, Package, TrendingUp, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardPaste, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale } from 'lucide-react';
+import { Plus, Calendar, Package, TrendingUp, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardPaste, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, PenTool, ClipboardList } from 'lucide-react';
 
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
@@ -1339,9 +1339,15 @@ export default function App() {
 
                     {showRawDataInput && (
                       <div className="px-3 sm:px-6 py-3 sm:py-4 bg-orange-50/30 border-b border-gray-200 shrink-0 shadow-inner flex flex-col gap-3">
-                        <div className="flex gap-4 border-b border-gray-200 pb-2">
-                          <label className="flex items-center gap-1.5 cursor-pointer font-bold text-xs sm:text-sm text-gray-700"><input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-3.5 h-3.5 text-orange-500" /> ✏️ 수동 입력</label>
-                          <label className="flex items-center gap-1.5 cursor-pointer font-bold text-xs sm:text-sm text-gray-700"><input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-3.5 h-3.5 text-orange-500" /> 📋 텍스트 일괄 붙여넣기</label>
+                        <div className="flex gap-6 border-b border-gray-200 pb-3">
+                          <label className="flex items-center gap-1.5 cursor-pointer font-bold text-sm text-gray-700 hover:text-orange-600 transition-colors">
+                            <input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-4 h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
+                            <PenTool size={16} className={addMode === 'manual' ? "text-orange-500" : "text-gray-400"} /> 수동 입력
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer font-bold text-sm text-gray-700 hover:text-orange-600 transition-colors">
+                            <input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-4 h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
+                            <ClipboardList size={16} className={addMode === 'bulk' ? "text-orange-500" : "text-gray-400"} /> 텍스트 일괄 붙여넣기 (Raw Data)
+                          </label>
                         </div>
                         {addMode === 'manual' ? (
                           <form onSubmit={handleAddManualInv} className="grid grid-cols-2 sm:flex gap-3 items-end bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
