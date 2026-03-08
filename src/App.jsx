@@ -305,6 +305,14 @@ export default function App() {
   };
   const today = getLocalToday();
 
+  // 👇 날짜(YYYY-MM-DD)를 입력하면 요일을 포함한 문자열(YYYY-MM-DD(요일))로 변환해주는 함수
+  const formatDateWithDay = (dateStr) => {
+    if (!dateStr) return '';
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const dateObj = new Date(dateStr);
+    return `${dateStr} (${days[dateObj.getDay()]})`;
+  };
+
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [formData, setFormData] = useState({ date: today, product: '', option: '', quantity: 1, price: 0, note: '' });
@@ -1146,13 +1154,14 @@ export default function App() {
           <div className="lg:col-span-4 flex flex-col gap-6">
             <div className="bg-white rounded-xl shadow-sm border border-emerald-200 overflow-hidden relative">
                <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-100 font-semibold text-emerald-800 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <TrendingUp size={18} /> {startDate !== endDate ? "기간 판매 요약" : `${startDate} 판매 요약`}
-                </div>
+                <div className="flex items-center gap-2"><TrendingUp size={18} /> 기간 판매 요약</div>
                 <button onClick={() => setMaximizedView('period')} className="text-emerald-600 hover:text-emerald-900 hover:bg-emerald-100 p-1.5 rounded transition-colors" title="상세 내역 확대 보기"><Maximize2 size={16} /></button>
               </div>
-              {startDate !== endDate && <div className="bg-emerald-50/50 px-4 py-2 text-xs text-emerald-700 border-b border-emerald-100 text-center font-medium">{startDate} ~ {endDate}</div>}
-              <div className="p-0">
+              {/* 하루든 기간이든 항상 표시하며, 요일도 함께 보여줍니다 */}
+              <div className="bg-emerald-50/50 px-4 py-2 text-[11px] text-emerald-700 border-b border-emerald-100 text-center font-medium">
+                {startDate === endDate ? formatDateWithDay(startDate) : `${formatDateWithDay(startDate)} ~ ${formatDateWithDay(endDate)}`}
+              </div>
+              <div className="p-0 overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-gray-600 bg-gray-50/50">
                     <tr>
@@ -1295,10 +1304,15 @@ export default function App() {
               <div className="flex items-center gap-3">
                 {maximizedView === 'period' ? <TrendingUp size={24} className="text-emerald-600" /> : maximizedView === 'total' ? <Archive size={24} className="text-blue-600" /> : <Box size={24} className="text-orange-600" />}
                 <div>
-                  <h2 className="text-xl font-bold">
-                    {maximizedView === 'period' ? (startDate !== endDate ? "기간 판매 상세 내역" : `${startDate} 판매 상세 내역`) : maximizedView === 'total' ? "전체 누적 판매 상세 내역" : "재고 상세 관리 및 추가"}
+                  <h2 className="text-base sm:text-xl font-bold leading-tight">
+                    {maximizedView === 'period' ? "기간 판매 상세 내역" : maximizedView === 'total' ? "전체 누적 판매 상세 내역" : "재고 상세 관리 및 추가"}
                   </h2>
-                  {maximizedView === 'period' && startDate !== endDate && <p className="text-sm opacity-80 mt-0.5">{startDate} ~ {endDate}</p>}
+                  {/* 기간 모달일 경우 하루든 여러 날이든 항상 날짜(요일) 표시 */}
+                  {maximizedView === 'period' && (
+                    <p className="text-[10px] sm:text-sm opacity-80 mt-0.5">
+                      {startDate === endDate ? formatDateWithDay(startDate) : `${formatDateWithDay(startDate)} ~ ${formatDateWithDay(endDate)}`}
+                    </p>
+                  )}
                 </div>
               </div>
               <button onClick={handleCloseModal} className={`p-2 rounded-lg transition-colors ${maximizedView === 'period' ? 'hover:bg-emerald-100 text-emerald-700' : maximizedView === 'total' ? 'hover:bg-blue-100 text-blue-700' : 'hover:bg-orange-100 text-orange-700'}`}><X size={24} /></button>
