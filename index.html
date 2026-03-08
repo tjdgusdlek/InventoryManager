@@ -3,29 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     
-    <!-- ✨ SVG 대신 변환한 고화질 PNG 아이콘으로 변경 ✨ -->
     <link rel="icon" type="image/png" href="/icon.png" />
     
-    <!-- 모바일 화면 확대/축소 방지 및 여백 없이 꽉 찬 화면 설정 (viewport-fit=cover 추가) -->
+    <!-- 모바일 화면 꽉 차게 설정 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
     <title>당근 재고관리 시스템</title>
 
     <link rel="manifest" href="/manifest.json" />
     
-    <!-- 다크모드/라이트모드에 따라 상하단 상태바 색상이 자동으로 바뀌도록 설정 -->
-    <!-- 라이트 모드일 때는 주황색 -->
-    <meta name="theme-color" content="#f97316" media="(prefers-color-scheme: light)" />
-    <!-- 다크 모드일 때는 진한 회색(Tailwind의 gray-950 색상과 동일) -->
+    <!-- 아이폰 등 상하단 상태바 테마 색상 (라이트: 기본 배경, 다크: 진한 배경) -->
+    <meta name="theme-color" content="#f9fafb" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#030712" media="(prefers-color-scheme: dark)" />
     
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- 아이폰에서 상태바 텍스트 색상을 배경색에 맞춰 적절히 변경 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="당근 재고" />
     
-    <!-- ✨ 아이폰 바탕화면용 아이콘도 PNG로 변경 ✨ -->
     <link rel="apple-touch-icon" href="/icon.png" />
+
+    <!-- ✨ 이 부분이 핵심입니다! 브라우저 가장 밑바닥 껍데기의 색상을 다크모드에 맞춥니다 ✨ -->
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f9fafb; /* 라이트 모드일 때의 배경색 (연한 회색) */
+      }
+      /* 스마트폰이 다크 모드일 때 껍데기 배경색을 앱과 동일한 진한 회색으로 변경 */
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #030712; 
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
