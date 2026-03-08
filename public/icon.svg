@@ -1,11 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!-- 흰색 둥근 사각형 배경 -->
-  <rect width="512" height="512" rx="120" fill="#ffffff"/>
-  <!-- 주황색 당근 아이콘 (가운데 정렬) -->
-  <svg x="96" y="96" width="320" height="320" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M2.27 21.7s9.87-3.5 12.73-6.36a4.5 4.5 0 0 0-6.36-6.37C5.77 11.84 2.27 21.7 2.27 21.7z"/>
-    <path d="M8.64 14l-2.05-2.04"/>
-    <path d="M15.34 15l-2.46-2.46"/>
-    <path d="M22 9.64a2.1 2.1 0 0 0-2.94-2.94l-4.63 4.63-2.94-2.94L16.12 3.8A2.1 2.1 0 0 0 13.18 1L10.5 4.5 14 7l-2 2 2.5 2.5 2-2 2.5 3.5z"/>
-  </svg>
+  <rect width="512" height="512" rx="115" fill="#ffffff"/>
+  
+  <!-- 당근 그룹 (가운데 정렬 및 25도 회전하여 역동적인 느낌 추가) -->
+  <g transform="translate(256, 260) rotate(25)">
+    
+    <!-- 🌿 잎사귀 부분 (당근 몸통 뒤에 렌더링되도록 먼저 작성) -->
+    <!-- 가운데 잎 -->
+    <path d="M 0 -70 C -20 -160 -40 -200 -40 -200 C 40 -220 50 -130 0 -70 Z" fill="#22c55e" />
+    <!-- 왼쪽 잎 -->
+    <path d="M -20 -60 C -80 -130 -120 -130 -120 -130 C -120 -70 -60 -30 -20 -60 Z" fill="#4ade80" />
+    <!-- 오른쪽 잎 -->
+    <path d="M 20 -60 C 80 -130 120 -130 120 -130 C 120 -70 60 -30 20 -60 Z" fill="#4ade80" />
+    
+    <!-- 🥕 당근 몸통 (통통하고 둥근 형태) -->
+    <path d="M -70 -40 C -70 -110, 70 -110, 70 -40 C 70 70, 25 170, 0 190 C -25 170, -70 70, -70 -40 Z" fill="#f97316" />
+    
+    <!-- 당근 무늬 (주름 디테일) -->
+    <path d="M -50 0 Q 0 20 40 -10" stroke="#ea580c" stroke-width="10" stroke-linecap="round" fill="none" />
+    <path d="M -40 60 Q -10 80 30 50" stroke="#ea580c" stroke-width="10" stroke-linecap="round" fill="none" />
+    <path d="M -20 120 Q 5 135 20 110" stroke="#ea580c" stroke-width="10" stroke-linecap="round" fill="none" />
+    
+    <!-- 당근 윤기 (왼쪽 상단 빛 반사 하이라이트) -->
+    <path d="M -40 -30 C -40 -60, -10 -80, 10 -80" stroke="#fdba74" stroke-width="10" stroke-linecap="round" fill="none" />
+  </g>
 </svg>
