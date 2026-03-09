@@ -1126,7 +1126,7 @@ export default function App() {
           <div className="lg:col-span-4 flex flex-col gap-6">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden relative transition-colors">
                <div className="bg-gray-50 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex justify-between items-center shrink-0">
-                <div className="flex items-center gap-2 whitespace-nowrap"><Archive size={18} className="text-gray-500" /> 누적 판매 요약</div>
+                <div className="flex items-center gap-2 whitespace-nowrap"><Archive size={18} className="text-orange-500" /> 누적 판매 요약</div>
                 <button onClick={() => setMaximizedView('total')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="상세 내역 확대 보기"><Maximize2 size={16} /></button>
               </div>
                <div className="p-0 flex-1 overflow-y-auto overflow-x-auto min-h-0">
