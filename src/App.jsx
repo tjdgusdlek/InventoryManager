@@ -968,7 +968,7 @@ export default function App() {
                           <th className="px-3 py-3 font-semibold text-center w-[15%]">수량</th>
                           <th className="px-3 py-3 font-semibold text-right w-[25%] md:w-[15%]">금액</th>
                           <th className="pl-6 pr-3 py-3 font-semibold hidden md:table-cell md:w-[15%]">비고</th>
-                          <th className="px-3 py-3 text-center w-[15%] md:w-[10%]"></th>
+                          <th className="px-3 py-3 text-center w-[15%] md:w-[10%]">관리</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -995,17 +995,19 @@ export default function App() {
                                     <input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 md:h-9 border border-gray-300 dark:border-gray-600 rounded-md px-2 md:px-3 text-xs md:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" />
                                   </td>
                                   <td className="px-1 py-2 text-center">
-                                    <div className="flex items-center justify-center w-[75px] md:w-[90px] h-8 md:h-9 mx-auto border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
-                                       <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="px-2 h-full flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
-                                       <input type="text" inputMode="numeric" value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: val}); }} className="flex-1 w-full h-full text-center text-xs md:text-sm font-bold bg-transparent outline-none" />
-                                       <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="px-2 h-full flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
+                                    {/* 💡 모바일 환경: +/- 버튼 숨기고 숫자패드 입력만 활성화 */}
+                                    <div className="flex items-center justify-center w-full sm:w-[90px] h-8 md:h-9 mx-auto border border-gray-300 dark:border-gray-600 sm:rounded-md overflow-hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow rounded">
+                                       <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
+                                       <input type="text" inputMode="numeric" pattern="[0-9]*" value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: val}); }} className="flex-1 w-full h-full text-center text-xs md:text-sm font-black bg-transparent outline-none" />
+                                       <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
                                     </div>
                                   </td>
                                   <td className="px-1 py-2 text-right">
-                                    <input type="text" inputMode="numeric" value={editForm.price === 0 ? '' : Number(editForm.price).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(rawValue)}); }} className="w-full min-w-[70px] h-8 md:h-9 ml-auto border border-gray-300 dark:border-gray-600 rounded-md px-2 md:px-3 text-xs md:text-sm font-bold text-right bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
+                                    {/* 💡 모바일 환경: 숫자패드 입력만 활성화 */}
+                                    <input type="text" inputMode="numeric" pattern="[0-9]*" value={editForm.price === 0 ? '' : Number(editForm.price).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(rawValue)}); }} className="w-full min-w-0 sm:min-w-[70px] h-8 md:h-9 ml-auto border border-gray-300 dark:border-gray-600 rounded px-1 sm:px-3 text-xs md:text-sm font-bold text-right bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
                                   </td>
                                   <td className="px-2 py-2 hidden md:table-cell">
-                                    <input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full h-8 md:h-9 border border-gray-300 dark:border-gray-600 rounded-md px-2 md:px-3 text-xs md:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" />
+                                    <input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full h-8 md:h-9 border border-gray-300 dark:border-gray-600 rounded px-2 md:px-3 text-xs md:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" />
                                   </td>
                                   <td className="px-1 py-2 text-center">
                                     <div className="flex justify-center items-center gap-1.5">
@@ -1111,6 +1113,20 @@ export default function App() {
                         <div className="p-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
                             <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm">
+                              <Clock size={16} className="text-gray-500 dark:text-gray-400 mr-2" /> 미정산금 <span className="font-normal text-xs text-gray-500 ml-1.5">(보관 중)</span>
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">
+                              누적 판매금({totalSales.toLocaleString()}원) - 송금액({remitted.toLocaleString()}원)
+                            </span>
+                          </div>
+                          <span className="font-black text-xl text-gray-900 dark:text-white text-right">
+                            {unsettledAmount.toLocaleString()} 원
+                          </span>
+                        </div>
+
+                        <div className="p-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
+                          <div>
+                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm">
                               <Wallet size={16} className="text-gray-500 dark:text-gray-400 mr-2" /> 현재 보유 자산 <span className="font-normal text-xs text-gray-500 ml-1.5">(계좌+현금)</span>
                             </span>
                           </div>
@@ -1144,9 +1160,8 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* 💡 기간 요약 박스를 완전히 제거하고, 누적 판매 요약 박스가 세로로 꽉 차게(h-full) 변경했습니다. */}
-          <div className="lg:col-span-4">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col relative transition-colors">
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden relative transition-colors">
                <div className="bg-gray-50 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-2"><Archive size={18} className="text-gray-500" /> 누적 판매 요약</div>
                 <button onClick={() => setMaximizedView('total')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="상세 내역 확대 보기"><Maximize2 size={16} /></button>
@@ -1198,7 +1213,7 @@ export default function App() {
                 <button onClick={() => setMaximizedView('inventory')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="재고 관리 확대 보기"><Maximize2 size={16} /></button>
               </div>
               <div className="flex-1 overflow-x-auto min-h-0 relative">
-                <table className="w-full min-h-full text-sm text-left">
+                <table className="w-full text-sm text-left">
                   <thead className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 sticky top-0 shadow-sm border-b border-gray-100 dark:border-gray-800">
                     <tr>
                       <th className="px-5 py-3.5 font-semibold whitespace-nowrap">상품명</th>
@@ -1247,42 +1262,42 @@ export default function App() {
 
       {/* --- 모달 (상세 보기) 영역 --- */}
       {maximizedView && (
-        <div className="fixed inset-0 bg-gray-900/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 transition-colors">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border-2 border-gray-200 dark:border-gray-700">
+        <div className="fixed inset-0 bg-gray-900/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-6 lg:p-8 transition-colors">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[85vh] flex flex-col overflow-hidden border-2 border-gray-200 dark:border-gray-700">
             
-            <div className="px-6 py-4 flex justify-between items-center border-b shrink-0 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
+            <div className="px-4 sm:px-6 py-4 flex justify-between items-center border-b shrink-0 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
               <div className="flex items-center gap-3">
-                {maximizedView === 'total' ? <Archive size={24} className="text-orange-500" /> : <Box size={24} className="text-orange-500" />}
+                {maximizedView === 'total' ? <Archive size={24} className="text-orange-500 shrink-0" /> : <Box size={24} className="text-orange-500 shrink-0" />}
                 <div>
-                  <h2 className="text-xl font-black">
+                  <h2 className="text-lg sm:text-xl font-black">
                     {maximizedView === 'total' ? "전체 판매 상세 내역" : "재고 상세 관리 및 추가"}
                   </h2>
                 </div>
               </div>
-              <button onClick={handleCloseModal} className="p-2 rounded-lg transition-colors text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700"><X size={24} /></button>
+              <button onClick={handleCloseModal} className="p-2 rounded-lg transition-colors text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 shrink-0"><X size={24} /></button>
             </div>
 
             {maximizedView === 'inventory' ? (
               <div className="flex-1 flex flex-col overflow-hidden bg-gray-50/50 dark:bg-gray-900">
                 
-                <div className="flex bg-gray-100 dark:bg-gray-800/50 px-5 pt-4 gap-2 shrink-0 border-b border-gray-200 dark:border-gray-800">
-                  <button className={`px-5 py-2.5 rounded-t-xl font-bold text-sm transition-colors flex items-center gap-2 ${invTab === 'stock' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827]' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-800'}`} onClick={() => { setInvTab('stock'); setPendingRawData([]); setShowRawDataInput(false); }}><Package size={16} className={invTab === 'stock' ? "text-orange-500" : ""} /> 재고 현황</button>
-                  <button className={`px-5 py-2.5 rounded-t-xl font-bold text-sm transition-colors flex items-center gap-2 ${invTab === 'mapping' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827]' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-800'}`} onClick={() => setInvTab('mapping')}><Link size={16} className={invTab === 'mapping' ? "text-orange-500" : ""} /> 데이터 매칭 관리</button>
+                <div className="flex bg-gray-100 dark:bg-gray-800/50 px-3 sm:px-5 pt-3 sm:pt-4 gap-2 shrink-0 border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
+                  <button className={`px-4 sm:px-5 py-2.5 rounded-t-xl font-bold text-xs sm:text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${invTab === 'stock' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827]' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-800'}`} onClick={() => { setInvTab('stock'); setPendingRawData([]); setShowRawDataInput(false); }}><Package size={16} className={invTab === 'stock' ? "text-orange-500" : ""} /> 재고 현황</button>
+                  <button className={`px-4 sm:px-5 py-2.5 rounded-t-xl font-bold text-xs sm:text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${invTab === 'mapping' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827]' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-800'}`} onClick={() => setInvTab('mapping')}><Link size={16} className={invTab === 'mapping' ? "text-orange-500" : ""} /> 데이터 매칭 관리</button>
                 </div>
 
                 {invTab === 'stock' && pendingRawData.length === 0 && (
                   <>
-                    <div className="px-6 py-3.5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0 shadow-sm z-30 flex-wrap gap-3">
-                      <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs font-bold text-gray-500 dark:text-gray-400">상품명 검색</label>
-                          <div className="relative"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" /><input type="text" value={searchProduct} onChange={(e) => { setSearchProduct(e.target.value); setSearchOption(''); }} placeholder="상품명" className="pl-8 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all w-32 sm:w-40" /></div>
+                    <div className="px-4 sm:px-6 py-3.5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0 shadow-sm z-30 flex-wrap gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                        <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                          <label className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">상품 검색</label>
+                          <div className="relative w-full sm:w-40"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" /><input type="text" value={searchProduct} onChange={(e) => { setSearchProduct(e.target.value); setSearchOption(''); }} placeholder="상품명" className="w-full pl-8 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all" /></div>
                         </div>
                         {searchProduct && (
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400">옵션 선택</label>
-                            <div className="relative">
-                              <select value={searchOption} onChange={(e) => setSearchOption(e.target.value)} className="w-32 sm:w-40 px-3 py-1.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 cursor-pointer appearance-none">
+                          <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                            <label className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">옵션 선택</label>
+                            <div className="relative w-full sm:w-40">
+                              <select value={searchOption} onChange={(e) => setSearchOption(e.target.value)} className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 cursor-pointer appearance-none">
                                 <option value="">모든 옵션</option>
                                 {Array.from(new Set(inventoryData.filter(item => item.product.toLowerCase().includes(searchProduct.toLowerCase().trim())).map(item => item.option))).map(opt => (
                                   <option key={opt} value={opt}>{opt}</option>
@@ -1294,29 +1309,30 @@ export default function App() {
                             </div>
                           </div>
                         )}
-                        {(searchProduct || searchOption) && <button onClick={() => { setSearchProduct(''); setSearchOption(''); }} className="text-xs text-gray-400 hover:text-gray-800 dark:hover:text-white underline font-bold mt-5 sm:mt-0">초기화</button>}
+                        {(searchProduct || searchOption) && <button onClick={() => { setSearchProduct(''); setSearchOption(''); }} className="text-[11px] sm:text-xs text-gray-400 hover:text-gray-800 dark:hover:text-white underline font-bold whitespace-nowrap shrink-0">초기화</button>}
                       </div>
                       
                       <div className="flex items-center gap-2 ml-auto w-full sm:w-auto justify-end">
-                        <button onClick={() => exportToCSV(processedInventory, 'inventory')} className="px-3 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700">
-                          <Download size={14} /> <span className="hidden sm:inline">CSV </span>내보내기
+                        {/* 💡 모바일 환경에서는 내보내기 버튼 숨김 (hidden sm:flex) */}
+                        <button onClick={() => exportToCSV(processedInventory, 'inventory')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700 shrink-0">
+                          <Download size={14} /> <span>CSV 내보내기</span>
                         </button>
                         
-                        <button onClick={() => setShowRawDataInput(!showRawDataInput)} className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${showRawDataInput ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' : 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm'}`}>
+                        <button onClick={() => setShowRawDataInput(!showRawDataInput)} className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 flex-1 sm:flex-none ${showRawDataInput ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' : 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm'}`}>
                           {showRawDataInput ? <X size={14} /> : <Plus size={14} />} <span className="whitespace-nowrap">{showRawDataInput ? "닫기" : "재고 추가"}</span>
                         </button>
                       </div>
                     </div>
 
                     {showRawDataInput && (
-                      <div className="px-6 py-5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 shrink-0 shadow-inner flex flex-col gap-4">
-                        <div className="flex gap-6 border-b border-gray-200 dark:border-gray-700 pb-3">
-                          <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
-                            <input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-4 h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
+                      <div className="px-4 sm:px-6 py-4 sm:py-5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 shrink-0 shadow-inner flex flex-col gap-4">
+                        <div className="flex gap-4 sm:gap-6 border-b border-gray-200 dark:border-gray-700 pb-3">
+                          <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
+                            <input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
                             ✏️ 수동 직접 입력
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
-                            <input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-4 h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
+                          <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
+                            <input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
                             📋 텍스트 일괄 붙여넣기 (Raw Data)
                           </label>
                         </div>
@@ -1324,26 +1340,26 @@ export default function App() {
                         {addMode === 'manual' ? (
                           <form onSubmit={handleAddManualInv} className="flex flex-wrap md:flex-nowrap gap-3 items-end bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                             <div className="w-full md:flex-1">
-                              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">상품명</label>
-                              <input list="globalProductList" value={manualAddForm.product} onChange={e => setManualAddForm({...manualAddForm, product: e.target.value})} className="w-full border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="직접 입력 또는 선택" required />
+                              <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">상품명</label>
+                              <input list="globalProductList" value={manualAddForm.product} onChange={e => setManualAddForm({...manualAddForm, product: e.target.value})} className="w-full border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg px-3 py-2 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="직접 입력 또는 선택" required />
                             </div>
                             <div className="w-full md:flex-1">
-                              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">옵션명</label>
-                              <input list="globalOptionList" value={manualAddForm.option} onChange={e => setManualAddForm({...manualAddForm, option: e.target.value})} className="w-full border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="직접 입력 또는 선택" required />
+                              <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">옵션명</label>
+                              <input list="globalOptionList" value={manualAddForm.option} onChange={e => setManualAddForm({...manualAddForm, option: e.target.value})} className="w-full border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg px-3 py-2 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="직접 입력 또는 선택" required />
                             </div>
                             
                             <div className="w-full md:w-[130px]">
-                              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">수량</label>
+                              <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">수량</label>
                               <div className="flex items-center w-full border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-500 bg-transparent text-gray-900 dark:text-white transition-shadow">
                                 <button type="button" onClick={() => { const q = Number(manualAddForm.qty) || 0; if (q > 1) setManualAddForm({...manualAddForm, qty: q - 1 }); }} className="px-3 py-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-r border-gray-300 dark:border-gray-700 focus:outline-none"><Minus size={14} strokeWidth={2.5}/></button>
-                                <input type="text" inputMode="numeric" value={manualAddForm.qty} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setManualAddForm({...manualAddForm, qty: val}); }} className="flex-1 w-full text-center text-sm font-black bg-transparent outline-none py-2" required />
+                                <input type="text" inputMode="numeric" pattern="[0-9]*" value={manualAddForm.qty} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setManualAddForm({...manualAddForm, qty: val}); }} className="flex-1 w-full text-center text-xs sm:text-sm font-black bg-transparent outline-none py-2" required />
                                 <button type="button" onClick={() => { const q = Number(manualAddForm.qty) || 0; setManualAddForm({...manualAddForm, qty: q + 1 }); }} className="px-3 py-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-l border-gray-300 dark:border-gray-700 focus:outline-none"><Plus size={14} strokeWidth={2.5}/></button>
                               </div>
                             </div>
 
                             <div className="w-full md:w-[150px]">
-                              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">판매 금액 (원)</label>
-                              <input type="text" inputMode="numeric" value={manualAddForm.sellPrice === 0 ? '' : Number(manualAddForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setManualAddForm({...manualAddForm, sellPrice: Number(rawValue)}); }} className="w-full border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm font-black focus:ring-2 focus:ring-orange-500 outline-none text-right transition-shadow" placeholder="0" />
+                              <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">판매 금액 (원)</label>
+                              <input type="text" inputMode="numeric" pattern="[0-9]*" value={manualAddForm.sellPrice === 0 ? '' : Number(manualAddForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setManualAddForm({...manualAddForm, sellPrice: Number(rawValue)}); }} className="w-full border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg px-3 py-2 text-xs sm:text-sm font-black focus:ring-2 focus:ring-orange-500 outline-none text-right transition-shadow" placeholder="0" />
                             </div>
 
                             <button type="submit" className="w-full md:w-auto bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-8 py-2.5 transition-colors shadow-sm flex items-center justify-center h-[42px] shrink-0 mt-2 md:mt-0">
@@ -1352,26 +1368,27 @@ export default function App() {
                           </form>
                         ) : (
                           <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><ClipboardList size={16} className="text-orange-500" /> 스마트 인식</h3>
-                            <div className="flex flex-col md:flex-row gap-4">
-                              <textarea value={bulkInvInput} onChange={(e) => setBulkInvInput(e.target.value)} placeholder="상차된 상품목록 데이터를 복사해서 바로 붙여넣으세요.&#13;&#10;자동으로 옵션ID, 상품명, 수량을 인식해서 매칭해줍니다!" className="flex-1 border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500 resize-none h-24 font-mono leading-relaxed transition-shadow placeholder-gray-400" />
-                              <button onClick={handleParseRawData} className="bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 dark:hover:bg-gray-600 text-white font-bold rounded-lg px-6 py-3 transition-colors shadow-sm flex md:flex-col items-center justify-center gap-2 shrink-0 md:w-36 h-auto"><Search size={20} /><span>데이터 인식</span></button>
+                            <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><ClipboardList size={16} className="text-orange-500" /> 스마트 인식</h3>
+                            <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
+                              <textarea value={bulkInvInput} onChange={(e) => setBulkInvInput(e.target.value)} placeholder="상차된 상품목록 데이터를 복사해서 바로 붙여넣으세요.&#13;&#10;자동으로 옵션ID, 상품명, 수량을 인식해서 매칭해줍니다!" className="flex-1 border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg p-3 text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500 resize-none h-24 font-mono leading-relaxed transition-shadow placeholder-gray-400" />
+                              <button onClick={handleParseRawData} className="bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 dark:hover:bg-gray-600 text-white font-bold rounded-lg px-6 py-2.5 sm:py-3 transition-colors shadow-sm flex md:flex-col items-center justify-center gap-2 shrink-0 md:w-36 h-auto"><Search size={18} className="sm:w-5 sm:h-5" /><span>데이터 인식</span></button>
                             </div>
                           </div>
                         )}
                       </div>
                     )}
 
-                    <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900 relative">
-                      <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 z-0 text-xs">
+                    <div className="flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-gray-900 relative">
+                      <table className="w-full text-sm text-left min-w-[340px] sm:min-w-[700px]">
+                        <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 z-10 text-[11px] sm:text-xs">
                           <tr>
-                            <th className="px-6 py-3 font-semibold w-[25%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 {getSortIcon('product')}</div></th>
-                            <th className="px-6 py-3 font-semibold w-[20%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
-                            <th className="px-6 py-3 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('qty')}><div className="flex items-center justify-end gap-1">총 수량 {getSortIcon('qty')}</div></th>
-                            <th className="px-6 py-3 font-semibold text-right whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('sellPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('sellPrice')}</div></th>
-                            <th className="px-6 py-3 font-semibold text-center w-28 whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은 수량 {getSortIcon('remainQty')}</div></th>
-                            <th className="px-6 py-3 font-semibold text-center w-24 whitespace-nowrap">관리</th>
+                            {/* 💡 모바일 환경에서 <td> 개수가 맞도록 hidden 처리 세분화 */}
+                            <th className="px-2 sm:px-6 py-3 font-semibold w-[40%] sm:w-[25%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 <span className="sm:hidden font-normal text-gray-400">/ 정보</span> {getSortIcon('product')}</div></th>
+                            <th className="px-6 py-3 font-semibold w-[20%] hidden sm:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
+                            <th className="px-1 sm:px-6 py-3 font-semibold text-center sm:text-right w-[20%] sm:w-[15%] whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('qty')}><div className="flex items-center justify-center sm:justify-end gap-1">총 수량 {getSortIcon('qty')}</div></th>
+                            <th className="px-6 py-3 font-semibold text-right hidden sm:table-cell w-[15%] whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('sellPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('sellPrice')}</div></th>
+                            <th className="px-1 sm:px-6 py-3 font-semibold text-center w-[20%] sm:w-28 whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은 수량 {getSortIcon('remainQty')}</div></th>
+                            <th className="px-1 sm:px-6 py-3 font-semibold text-center w-[20%] sm:w-24 whitespace-nowrap">관리</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
@@ -1382,21 +1399,31 @@ export default function App() {
                               if (editingInvId === item.id) {
                                 return (
                                   <tr key={item.id} className="bg-orange-50/50 dark:bg-orange-900/10">
-                                    <td className="px-4 py-2"><input type="text" value={invEditForm.product} onChange={e => setInvEditForm({...invEditForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
-                                    <td className="px-4 py-2"><input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
-                                    <td className="px-4 py-2 text-right">
-                                      <div className="flex items-center justify-center w-[90px] h-8 mx-auto border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500">
-                                         <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; if (q > 0) setInvEditForm({...invEditForm, qty: q - 1}); }} className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
-                                         <input type="text" inputMode="numeric" value={invEditForm.qty} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, qty: val}); }} className="flex-1 w-full h-full text-center text-sm font-black bg-transparent outline-none" />
-                                         <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; setInvEditForm({...invEditForm, qty: q + 1}); }} className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
+                                    <td className="px-2 sm:px-4 py-2">
+                                      <input type="text" value={invEditForm.product} onChange={e => setInvEditForm({...invEditForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
+                                      {/* 모바일에서는 옵션명, 금액을 상품명 칸 아래에서 편집 가능하도록 표시 */}
+                                      <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1" placeholder="옵션명" />
+                                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={invEditForm.sellPrice === 0 ? '' : Number(invEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(rawValue)}); }} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1 font-bold text-right" placeholder="판매 금액" />
+                                    </td>
+                                    <td className="px-4 py-2 hidden sm:table-cell">
+                                      <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" />
+                                    </td>
+                                    <td className="px-1 sm:px-4 py-2 text-center sm:text-right">
+                                      {/* 💡 모바일 환경: +/- 버튼 숨기고 숫자패드 입력만 활성화 */}
+                                      <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto border border-gray-300 dark:border-gray-600 rounded overflow-hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
+                                         <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; if (q > 0) setInvEditForm({...invEditForm, qty: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
+                                         <input type="text" inputMode="numeric" pattern="[0-9]*" value={invEditForm.qty} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, qty: val}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-transparent outline-none" />
+                                         <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; setInvEditForm({...invEditForm, qty: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
                                       </div>
                                     </td>
-                                    <td className="px-4 py-2 text-right"><input type="text" inputMode="numeric" value={invEditForm.sellPrice === 0 ? '' : Number(invEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(rawValue)}); }} className="w-24 h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm text-right ml-auto font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" /></td>
-                                    <td className="px-4 py-2 text-center text-gray-400 text-xs font-medium">자동 계산</td>
-                                    <td className="px-4 py-2 text-center">
-                                      <div className="flex justify-center items-center gap-1.5">
-                                        <button onClick={saveInvEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><Check size={16} /></button>
-                                        <button onClick={cancelInvEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><X size={16} /></button>
+                                    <td className="px-4 py-2 text-right hidden sm:table-cell">
+                                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={invEditForm.sellPrice === 0 ? '' : Number(invEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(rawValue)}); }} className="w-full sm:w-24 h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-sm text-right ml-auto font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
+                                    </td>
+                                    <td className="px-1 sm:px-4 py-2 text-center text-gray-400 text-[10px] sm:text-xs font-medium">자동 계산</td>
+                                    <td className="px-1 sm:px-4 py-2 text-center">
+                                      <div className="flex justify-center items-center gap-1 sm:gap-1.5">
+                                        <button onClick={saveInvEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><Check size={14} className="sm:w-4 sm:h-4" /></button>
+                                        <button onClick={cancelInvEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><X size={14} className="sm:w-4 sm:h-4" /></button>
                                       </div>
                                     </td>
                                   </tr>
@@ -1404,17 +1431,21 @@ export default function App() {
                               }
                               return (
                                 <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 group transition-colors">
-                                  <td className="px-6 py-3.5 font-bold text-gray-900 dark:text-white break-keep">{item.product}</td>
-                                  <td className="px-6 py-3.5 text-gray-600 dark:text-gray-400 break-keep">{item.option}</td>
-                                  <td className="px-6 py-3.5 text-right font-bold text-gray-900 dark:text-gray-200">{item.qty}</td>
-                                  <td className="px-6 py-3.5 text-right font-black text-gray-900 dark:text-white">{item.sellPrice.toLocaleString()}원</td>
-                                  <td className="px-6 py-3.5 text-center">
-                                    <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md font-black text-sm ${item.remainQty === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-orange-500'}`}>{item.remainQty}</span>
+                                  <td className="px-2 sm:px-6 py-3">
+                                    <div className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white break-keep leading-tight">{item.product}</div>
+                                    <div className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 sm:hidden">{item.option}</div>
+                                    <div className="text-[10px] text-gray-400 dark:text-gray-500 sm:hidden mt-0.5 font-bold">{item.sellPrice.toLocaleString()}원</div>
                                   </td>
-                                  <td className="px-6 py-3.5 text-center">
-                                    <div className="flex justify-center items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <button onClick={() => startInvEdit(item)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="재고 수정"><Edit2 size={16} /></button>
-                                      <button onClick={() => handleDeleteInv(item.id)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="품목 삭제"><Trash2 size={16} /></button>
+                                  <td className="px-6 py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-keep hidden sm:table-cell">{item.option}</td>
+                                  <td className="px-1 sm:px-6 py-3 text-center sm:text-right font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200">{item.qty}</td>
+                                  <td className="px-6 py-3 text-right font-black text-xs sm:text-sm text-gray-900 dark:text-white hidden sm:table-cell">{item.sellPrice.toLocaleString()}원</td>
+                                  <td className="px-1 sm:px-6 py-3 text-center">
+                                    <span className={`inline-flex items-center justify-center px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md font-black text-[10px] sm:text-sm ${item.remainQty === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-orange-500'}`}>{item.remainQty}</span>
+                                  </td>
+                                  <td className="px-1 sm:px-6 py-3 text-center">
+                                    <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button onClick={() => startInvEdit(item)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="재고 수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
+                                      <button onClick={() => handleDeleteInv(item.id)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1 sm:p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="품목 삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
                                     </div>
                                   </td>
                                 </tr>
@@ -1429,25 +1460,25 @@ export default function App() {
 
                 {invTab === 'stock' && pendingRawData.length > 0 && (
                   <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-900">
-                    <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-sm shrink-0 gap-3">
+                    <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-sm shrink-0 gap-3">
                       <div>
-                        <h3 className="text-base sm:text-lg font-black text-gray-900 dark:text-white flex items-center gap-2"><AlertCircle size={18} className="text-orange-500" /> 인식된 데이터 ({pendingRawData.length}건)<span className="text-xs sm:text-sm bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2.5 py-0.5 rounded-full ml-2 font-bold">총: {pendingRawData.reduce((a, c) => a + c.qty, 0)}개</span></h3>
+                        <h3 className="text-sm sm:text-lg font-black text-gray-900 dark:text-white flex items-center gap-1.5 sm:gap-2"><AlertCircle size={16} className="text-orange-500 sm:w-[18px] sm:h-[18px]" /> 인식된 데이터 ({pendingRawData.length}건)<span className="text-[10px] sm:text-sm bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2 sm:px-2.5 py-0.5 rounded-full ml-1.5 sm:ml-2 font-bold">총: {pendingRawData.reduce((a, c) => a + c.qty, 0)}개</span></h3>
                       </div>
-                      <div className="flex gap-2 w-full sm:w-auto"><button onClick={() => setPendingRawData([])} className="flex-1 sm:flex-none px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-sm font-bold transition-colors">취소</button><button onClick={applyPendingData} className="flex-1 sm:flex-none px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white hover:bg-black dark:hover:bg-gray-600 rounded-lg text-sm font-bold shadow-sm transition-colors">매칭 저장 및 반영</button></div>
+                      <div className="flex gap-2 w-full sm:w-auto"><button onClick={() => setPendingRawData([])} className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-xs sm:text-sm font-bold transition-colors">취소</button><button onClick={applyPendingData} className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white hover:bg-black dark:hover:bg-gray-600 rounded-lg text-xs sm:text-sm font-bold shadow-sm transition-colors">매칭 저장 및 반영</button></div>
                     </div>
                     <div className="flex-1 overflow-x-auto overflow-y-auto">
-                      <table className="w-full text-sm text-left min-w-[700px]">
-                        <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 text-xs border-b border-gray-100 dark:border-gray-800">
-                          <tr><th className="px-5 py-3.5 w-1/3 font-semibold">Raw Data</th><th className="px-5 py-3.5 text-right font-semibold">수량</th><th className="px-5 py-3.5 font-semibold">매칭 상품</th><th className="px-5 py-3.5 font-semibold">매칭 옵션</th><th className="px-5 py-3.5 text-right font-semibold">판매 금액(원)</th></tr>
+                      <table className="w-full text-sm text-left min-w-[600px] sm:min-w-[700px]">
+                        <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 text-[11px] sm:text-xs border-b border-gray-100 dark:border-gray-800">
+                          <tr><th className="px-4 sm:px-5 py-3 sm:py-3.5 w-[30%] sm:w-1/3 font-semibold">Raw Data</th><th className="px-2 sm:px-5 py-3 sm:py-3.5 text-right font-semibold">수량</th><th className="px-3 sm:px-5 py-3 sm:py-3.5 font-semibold">매칭 상품</th><th className="px-3 sm:px-5 py-3 sm:py-3.5 font-semibold">매칭 옵션</th><th className="px-3 sm:px-5 py-3 sm:py-3.5 text-right font-semibold">판매 금액(원)</th></tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
                           {pendingRawData.map((item, idx) => (
                             <tr key={idx} className={item.mapped ? "bg-gray-50/50 dark:bg-gray-800/30" : "bg-red-50/50 dark:bg-red-900/10"}>
-                              <td className="px-5 py-3 text-xs"><div className="font-mono text-gray-500 dark:text-gray-400">{item.rawId}</div><div className="font-bold text-gray-900 dark:text-white mt-0.5">{item.rawName.split(',')[0]}</div></td>
-                              <td className="px-5 py-3 text-right font-black text-gray-900 dark:text-white text-base">{item.qty}</td>
-                              <td className="px-5 py-3"><input list="globalProductList" value={item.mapTo.product} onChange={(e) => updatePendingMap(idx, 'product', e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 text-xs font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
-                              <td className="px-5 py-3"><input list="globalOptionList" value={item.mapTo.option} onChange={(e) => updatePendingMap(idx, 'option', e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
-                              <td className="px-5 py-3 text-right"><input type="number" inputMode="numeric" value={item.mapTo.sellPrice || ''} onChange={(e) => updatePendingMap(idx, 'sellPrice', e.target.value)} className="w-24 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 text-xs text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
+                              <td className="px-4 sm:px-5 py-2 sm:py-3 text-[10px] sm:text-xs"><div className="font-mono text-gray-500 dark:text-gray-400">{item.rawId}</div><div className="font-bold text-gray-900 dark:text-white mt-0.5 leading-tight">{item.rawName.split(',')[0]}</div></td>
+                              <td className="px-2 sm:px-5 py-2 sm:py-3 text-right font-black text-gray-900 dark:text-white text-sm sm:text-base">{item.qty}</td>
+                              <td className="px-3 sm:px-5 py-2 sm:py-3"><input list="globalProductList" value={item.mapTo.product} onChange={(e) => updatePendingMap(idx, 'product', e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
+                              <td className="px-3 sm:px-5 py-2 sm:py-3"><input list="globalOptionList" value={item.mapTo.option} onChange={(e) => updatePendingMap(idx, 'option', e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 py-1 sm:py-1.5 text-[11px] sm:text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
+                              <td className="px-3 sm:px-5 py-2 sm:py-3 text-right"><input type="text" inputMode="numeric" pattern="[0-9]*" value={item.mapTo.sellPrice || ''} onChange={(e) => updatePendingMap(idx, 'sellPrice', e.target.value.replace(/[^0-9]/g, ''))} className="w-16 sm:w-24 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 py-1 sm:py-1.5 text-[11px] sm:text-xs text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
                             </tr>
                           ))}
                         </tbody>
@@ -1457,18 +1488,18 @@ export default function App() {
                 )}
 
                 {invTab === 'mapping' && (
-                  <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900 relative">
-                    <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 shadow-sm shrink-0">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">이곳에서 외부 데이터의 <strong className="font-bold text-gray-900 dark:text-white">옵션ID</strong>와 내부 <strong className="font-bold text-gray-900 dark:text-white">상품/옵션명</strong>의 연결 상태를 확인하고 판매단가를 수정할 수 있습니다.</p>
+                  <div className="flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-gray-900 relative">
+                    <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 shadow-sm shrink-0">
+                      <p className="text-[11px] sm:text-sm text-gray-600 dark:text-gray-400 font-medium">이곳에서 외부 데이터의 <strong className="font-bold text-gray-900 dark:text-white">옵션ID</strong>와 내부 <strong className="font-bold text-gray-900 dark:text-white">상품/옵션명</strong>의 연결 상태를 확인하고 판매단가를 수정할 수 있습니다.</p>
                     </div>
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 text-xs">
+                    <table className="w-full text-sm text-left min-w-[400px] sm:min-w-full">
+                      <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 text-[11px] sm:text-xs">
                         <tr>
-                          <th className="px-6 py-3 font-semibold w-1/4">옵션ID / 원본명</th>
-                          <th className="px-6 py-3 font-semibold w-1/4">매칭 상품명</th>
-                          <th className="px-6 py-3 font-semibold w-1/4">매칭 옵션명</th>
-                          <th className="px-6 py-3 font-semibold text-right whitespace-nowrap">판매 금액</th>
-                          <th className="px-6 py-3 font-semibold text-center w-24 whitespace-nowrap">관리</th>
+                          <th className="px-3 sm:px-6 py-3 font-semibold w-[35%] sm:w-1/4">옵션ID / 원본명</th>
+                          <th className="px-2 sm:px-6 py-3 font-semibold w-[30%] sm:w-1/4">매칭 상품<span className="sm:hidden font-normal text-gray-400">/옵션</span></th>
+                          <th className="px-6 py-3 font-semibold hidden sm:table-cell w-1/4">매칭 옵션명</th>
+                          <th className="px-2 sm:px-6 py-3 font-semibold text-right w-[20%] sm:w-auto whitespace-nowrap">판매 금액</th>
+                          <th className="px-2 sm:px-6 py-3 font-semibold text-center w-[15%] sm:w-24 whitespace-nowrap">관리</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
@@ -1479,23 +1510,26 @@ export default function App() {
                              if (editingMapId === mapItem.rawId) {
                                 return (
                                   <tr key={mapItem.rawId} className="bg-orange-50/50 dark:bg-orange-900/10">
-                                    <td className="px-6 py-3">
-                                      <div className="font-mono text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px]">{mapItem.rawId}</div>
-                                      <div className="font-bold text-xs text-gray-900 dark:text-white mt-1 truncate max-w-[150px]">{mapItem.rawName.split(',')[0]}</div>
+                                    <td className="px-3 sm:px-6 py-2">
+                                      <div className="font-mono text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate max-w-[100px] sm:max-w-[150px]">{mapItem.rawId}</div>
+                                      <div className="font-bold text-[11px] sm:text-xs text-gray-900 dark:text-white mt-1 truncate max-w-[120px] sm:max-w-[150px]">{mapItem.rawName.split(',')[0]}</div>
                                     </td>
-                                    <td className="px-4 py-2">
-                                      <input type="text" value={mapEditForm.product} onChange={e => setMapEditForm({...mapEditForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
+                                    <td className="px-2 sm:px-4 py-2">
+                                      <input type="text" value={mapEditForm.product} onChange={e => setMapEditForm({...mapEditForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
+                                      {/* 모바일에서는 옵션명을 아래에 배치 */}
+                                      <input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1" placeholder="옵션명" />
                                     </td>
-                                    <td className="px-4 py-2">
+                                    <td className="px-4 py-2 hidden sm:table-cell">
                                       <input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" />
                                     </td>
-                                    <td className="px-4 py-2 text-right">
-                                      <input type="text" inputMode="numeric" value={mapEditForm.sellPrice === 0 ? '' : Number(mapEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setMapEditForm({...mapEditForm, sellPrice: Number(rawValue)}); }} className="w-full min-w-[70px] h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
+                                    <td className="px-2 sm:px-4 py-2 text-right">
+                                      {/* 모바일 환경: 숫자패드 적용 */}
+                                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={mapEditForm.sellPrice === 0 ? '' : Number(mapEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setMapEditForm({...mapEditForm, sellPrice: Number(rawValue)}); }} className="w-full min-w-[50px] sm:min-w-[70px] h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
                                     </td>
-                                    <td className="px-4 py-2 text-center">
-                                      <div className="flex justify-center items-center gap-1.5">
-                                        <button onClick={saveMapEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><Check size={16}/></button>
-                                        <button onClick={cancelMapEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><X size={16}/></button>
+                                    <td className="px-2 sm:px-4 py-2 text-center">
+                                      <div className="flex justify-center items-center gap-1 sm:gap-1.5">
+                                        <button onClick={saveMapEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 sm:p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><Check size={14} className="sm:w-4 sm:h-4" /></button>
+                                        <button onClick={cancelMapEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 sm:p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><X size={14} className="sm:w-4 sm:h-4" /></button>
                                       </div>
                                     </td>
                                   </tr>
@@ -1503,20 +1537,23 @@ export default function App() {
                              }
                              return (
                               <tr key={mapItem.rawId} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 group transition-colors">
-                                <td className="px-6 py-3.5">
-                                  <div className="font-mono text-xs text-gray-500 dark:text-gray-400">{mapItem.rawId}</div>
-                                  <div className="text-xs mt-1 leading-relaxed">
+                                <td className="px-3 sm:px-6 py-2.5 sm:py-3.5">
+                                  <div className="font-mono text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">{mapItem.rawId}</div>
+                                  <div className="text-[11px] sm:text-xs mt-1 leading-relaxed">
                                     <div className="font-bold text-gray-900 dark:text-white break-keep">{mapItem.rawName.split(',')[0]}</div>
-                                    {mapItem.rawName.includes(',') && <div className="font-bold text-orange-500 break-keep mt-0.5">옵션: {mapItem.rawName.split(',').slice(1).join(',')}</div>}
+                                    {mapItem.rawName.includes(',') && <div className="font-bold text-orange-500 break-keep mt-0.5 text-[10px] sm:text-[11px]">옵션: {mapItem.rawName.split(',').slice(1).join(',')}</div>}
                                   </div>
                                 </td>
-                                <td className="px-6 py-3.5 font-bold text-gray-900 dark:text-white break-keep">{mapItem.product}</td>
-                                <td className="px-6 py-3.5 text-gray-600 dark:text-gray-400 break-keep">{mapItem.option}</td>
-                                <td className="px-6 py-3.5 text-right font-black text-gray-900 dark:text-white">{mapItem.sellPrice.toLocaleString()}원</td>
-                                <td className="px-6 py-3.5 text-center">
-                                  <div className="flex justify-center items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => startMapEdit(mapItem)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="매칭 수정"><Edit2 size={16} /></button>
-                                    <button onClick={() => deleteMap(mapItem.rawId)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="매칭 삭제"><Trash2 size={16} /></button>
+                                <td className="px-2 sm:px-6 py-2.5 sm:py-3.5">
+                                  <div className="font-bold text-[11px] sm:text-sm text-gray-900 dark:text-white break-keep">{mapItem.product}</div>
+                                  <div className="text-[10px] text-gray-500 dark:text-gray-400 sm:hidden mt-0.5 truncate">{mapItem.option}</div>
+                                </td>
+                                <td className="px-6 py-3.5 hidden sm:table-cell text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-keep">{mapItem.option}</td>
+                                <td className="px-2 sm:px-6 py-2.5 sm:py-3.5 text-right font-black text-[11px] sm:text-sm text-gray-900 dark:text-white">{mapItem.sellPrice.toLocaleString()}원</td>
+                                <td className="px-2 sm:px-6 py-2.5 sm:py-3.5 text-center">
+                                  <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => startMapEdit(mapItem)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="매칭 수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
+                                    <button onClick={() => deleteMap(mapItem.rawId)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1 sm:p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="매칭 삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
                                   </div>
                                 </td>
                               </tr>
@@ -1530,64 +1567,66 @@ export default function App() {
               </div>
             ) : (
               <>
-                <div className="px-6 py-3.5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-sm z-30">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 w-full sm:w-auto shadow-sm">
-                      <span className="text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">조회 기간</span>
+                <div className="px-4 sm:px-6 py-3 sm:py-3.5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3 sm:gap-4 shrink-0 shadow-sm z-30">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                    <div className="flex items-center gap-1.5 sm:gap-2 bg-gray-50 dark:bg-gray-800 px-2 sm:px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 flex-1 sm:flex-none shadow-sm">
+                      <span className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">조회 기간</span>
                       <CustomDatePicker 
                         startDate={startDate} 
                         endDate={endDate} 
                         isRangeMode={true} 
                         onChange={(start, end) => { setStartDate(start); setEndDate(end); }} 
                         dropdownAlign="left" 
-                        className="text-xs font-bold text-gray-800 dark:text-gray-200 flex-1 justify-center ml-1" 
+                        className="text-[11px] sm:text-xs font-bold text-gray-800 dark:text-gray-200 flex-1 justify-center ml-1" 
                       />
                       {startDate && (
-                        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="ml-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors" title="날짜 초기화"><X size={14}/></button>
+                        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="ml-1 sm:ml-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors" title="날짜 초기화"><X size={14}/></button>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs font-bold text-gray-500 dark:text-gray-400">상품명 검색</label>
-                      <div className="relative"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" /><input type="text" value={searchProduct} onChange={(e) => { setSearchProduct(e.target.value); setSearchOption(''); }} placeholder="상품명" className="pl-8 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all w-32 sm:w-40" /></div>
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-none">
+                      <label className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">검색</label>
+                      <div className="relative w-full sm:w-32"><Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 sm:w-[14px] sm:h-[14px]" /><input type="text" value={searchProduct} onChange={(e) => { setSearchProduct(e.target.value); setSearchOption(''); }} placeholder="상품명" className="w-full pl-7 sm:pl-8 pr-2 py-1.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg text-[11px] sm:text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all" /></div>
                     </div>
                     {searchProduct && (
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400">옵션 선택</label>
-                        <div className="relative">
-                          <select value={searchOption} onChange={(e) => setSearchOption(e.target.value)} className="w-32 sm:w-40 px-3 py-1.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 cursor-pointer appearance-none">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-none">
+                        <label className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">옵션</label>
+                        <div className="relative w-full sm:w-32">
+                          <select value={searchOption} onChange={(e) => setSearchOption(e.target.value)} className="w-full px-2 sm:px-3 py-1.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg text-[11px] sm:text-sm font-medium outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 cursor-pointer appearance-none">
                             <option value="">모든 옵션</option>
                             {Array.from(new Set(sales.filter(item => item.product.toLowerCase().includes(searchProduct.toLowerCase().trim())).map(item => item.option))).map(opt => (
                               <option key={opt} value={opt}>{opt}</option>
                             ))}
                           </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 sm:px-2 text-gray-400">
                              <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                           </div>
                         </div>
                       </div>
                     )}
-                    {(searchProduct || searchOption || startDate) && <button onClick={() => { setSearchProduct(''); setSearchOption(''); setStartDate(''); setEndDate(''); }} className="text-xs text-gray-400 hover:text-gray-800 dark:hover:text-white underline font-bold mt-5 sm:mt-0">초기화</button>}
+                    {(searchProduct || searchOption || startDate) && <button onClick={() => { setSearchProduct(''); setSearchOption(''); setStartDate(''); setEndDate(''); }} className="text-[11px] sm:text-xs text-gray-400 hover:text-gray-800 dark:hover:text-white underline font-bold whitespace-nowrap">초기화</button>}
                   </div>
                   
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                     <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="px-3 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700">
-                       <Download size={14} /> <span className="hidden sm:inline">CSV </span>내보내기
+                     {/* 💡 모바일 환경에서는 내보내기 버튼 숨김 (hidden sm:flex) */}
+                     <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700">
+                       <Download size={14} /> <span>CSV 내보내기</span>
                      </button>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900 p-0 relative">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 z-10 text-xs">
+                <div className="flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-gray-900 p-0 relative">
+                  <table className="w-full text-sm text-left min-w-[340px] sm:min-w-[700px]">
+                    <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 z-10 text-[11px] sm:text-xs">
                       <tr>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('date')}><div className="flex items-center gap-1">판매일 {getSortIcon('date')}</div></th>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none w-[22%] transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 {getSortIcon('product')}</div></th>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none w-[16%] transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-right transition-colors" onClick={() => requestSort('quantity')}><div className="flex items-center justify-end gap-1">수량 {getSortIcon('quantity')}</div></th>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-right transition-colors" onClick={() => requestSort('totalPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('totalPrice')}</div></th>
-                        <th className="px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none w-[28%] transition-colors" onClick={() => requestSort('note')}><div className="flex items-center gap-1">비고 {getSortIcon('note')}</div></th>
-                        <th className="px-6 py-3 font-semibold text-center w-24 whitespace-nowrap">관리</th>
+                        {/* 💡 모바일 환경에서 <td> 개수가 맞도록 hidden 처리 세분화 */}
+                        <th className="px-2 sm:px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hidden sm:table-cell sm:w-[15%] transition-colors" onClick={() => requestSort('date')}><div className="flex items-center gap-1">판매일 {getSortIcon('date')}</div></th>
+                        <th className="px-2 sm:px-6 py-3 font-semibold whitespace-nowrap cursor-pointer w-[40%] sm:w-[22%] transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 <span className="sm:hidden font-normal text-gray-400">/ 정보</span> {getSortIcon('product')}</div></th>
+                        <th className="px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hidden sm:table-cell w-[16%] transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
+                        <th className="px-1 sm:px-6 py-3 font-semibold whitespace-nowrap cursor-pointer w-[15%] sm:w-auto transition-colors" onClick={() => requestSort('quantity')}><div className="flex items-center justify-center sm:justify-end gap-1">수량 {getSortIcon('quantity')}</div></th>
+                        <th className="px-1 sm:px-6 py-3 font-semibold whitespace-nowrap cursor-pointer w-[25%] sm:w-auto transition-colors" onClick={() => requestSort('totalPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('totalPrice')}</div></th>
+                        <th className="px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hidden sm:table-cell w-[28%] transition-colors" onClick={() => requestSort('note')}><div className="flex items-center gap-1">비고 {getSortIcon('note')}</div></th>
+                        <th className="px-1 sm:px-6 py-3 font-semibold text-center w-[20%] sm:w-24 whitespace-nowrap">관리</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
@@ -1598,22 +1637,31 @@ export default function App() {
                           if (editingSaleId === sale.id) {
                             return (
                               <tr key={sale.id} className="bg-orange-50/50 dark:bg-orange-900/10">
-                                <td className="px-4 py-2"><div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500"><CustomDatePicker startDate={editForm.date} onChange={(start) => setEditForm({...editForm, date: start})} wrapperClassName="w-full" className="w-full pl-2 py-1.5 text-xs bg-transparent outline-none whitespace-nowrap font-bold text-gray-900 dark:text-white" isRangeMode={false} /></div></td>
-                                <td className="px-4 py-2"><input type="text" value={editForm.product} onChange={e => setEditForm({...editForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" /></td>
-                                <td className="px-4 py-2"><input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" /></td>
-                                <td className="px-4 py-2 text-center">
-                                  <div className="flex items-center justify-center w-[90px] h-8 mx-auto border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
-                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
-                                     <input type="text" inputMode="numeric" value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: val}); }} className="flex-1 w-full h-full text-center text-sm font-black bg-transparent outline-none" />
-                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="px-2 h-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
+                                <td className="px-2 sm:px-4 py-2 hidden sm:table-cell"><div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500"><CustomDatePicker startDate={editForm.date} onChange={(start) => setEditForm({...editForm, date: start})} wrapperClassName="w-full" className="w-full pl-2 py-1.5 text-xs bg-transparent outline-none whitespace-nowrap font-bold text-gray-900 dark:text-white" isRangeMode={false} /></div></td>
+                                <td className="px-2 sm:px-4 py-2">
+                                  <input type="text" value={editForm.product} onChange={e => setEditForm({...editForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
+                                  {/* 모바일에서는 옵션, 비고를 상품명 칸 아래에 배치 */}
+                                  <input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1" placeholder="옵션명" />
+                                  <input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1" placeholder="비고" />
+                                </td>
+                                <td className="px-4 py-2 hidden sm:table-cell"><input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" /></td>
+                                <td className="px-1 sm:px-4 py-2 text-center">
+                                  {/* 💡 모바일 환경: +/- 버튼 숨기고 (hidden sm:flex), 숫자패드 입력(inputMode="numeric")만 활성화 */}
+                                  <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto sm:border sm:border-gray-300 dark:sm:border-gray-600 rounded-md overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
+                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
+                                     <input type="text" inputMode="numeric" pattern="[0-9]*" value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: val}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" />
+                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
                                   </div>
                                 </td>
-                                <td className="px-4 py-2 text-right"><input type="text" inputMode="numeric" value={editForm.price === 0 ? '' : Number(editForm.price).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(rawValue)}); }} className="w-full min-w-[70px] h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" /></td>
-                                <td className="px-4 py-2"><input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="비고" /></td>
-                                <td className="px-4 py-2 text-center">
-                                   <div className="flex justify-center items-center gap-1.5">
-                                     <button onClick={saveEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><Check size={16} /></button>
-                                     <button onClick={cancelEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><X size={16} /></button>
+                                <td className="px-1 sm:px-4 py-2 text-right">
+                                  {/* 💡 모바일 환경: 숫자패드 입력만 활성화 */}
+                                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={editForm.price === 0 ? '' : Number(editForm.price).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(rawValue)}); }} className="w-full min-w-[50px] sm:min-w-[70px] h-8 ml-auto border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
+                                </td>
+                                <td className="px-4 py-2 hidden sm:table-cell"><input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="비고" /></td>
+                                <td className="px-1 sm:px-4 py-2 text-center">
+                                   <div className="flex justify-center items-center gap-1 sm:gap-1.5">
+                                     <button onClick={saveEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 sm:p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><Check size={14} className="sm:w-4 sm:h-4" /></button>
+                                     <button onClick={cancelEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 sm:p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><X size={14} className="sm:w-4 sm:h-4" /></button>
                                    </div>
                                 </td>
                               </tr>
@@ -1621,16 +1669,23 @@ export default function App() {
                           }
                           return (
                             <tr key={sale.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 group transition-colors">
-                              <td className="px-6 py-3.5 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap text-xs">{sale.date}</td>
-                              <td className="px-6 py-3.5 font-bold text-gray-900 dark:text-white whitespace-nowrap">{sale.product}</td>
-                              <td className="px-6 py-3.5 text-gray-600 dark:text-gray-400 whitespace-nowrap">{sale.option}</td>
-                              <td className="px-6 py-3.5 text-right font-bold text-gray-900 dark:text-gray-200">{sale.quantity}</td>
-                              <td className="px-6 py-3.5 text-right font-black whitespace-nowrap text-gray-900 dark:text-white">{sale.totalPrice.toLocaleString()}원</td>
-                              <td className="px-6 py-3.5 text-gray-500 dark:text-gray-400 text-xs break-all">{sale.note || '-'}</td>
-                              <td className="px-6 py-3.5 text-center">
-                                <div className="flex justify-center items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => startEdit(sale)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="내역 수정"><Edit2 size={16} /></button>
-                                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="내역 삭제"><Trash2 size={16} /></button>
+                              <td className="px-4 sm:px-6 py-2.5 sm:py-3.5 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap text-[11px] sm:text-xs hidden sm:table-cell">{sale.date}</td>
+                              <td className="px-2 sm:px-6 py-2.5 sm:py-3.5">
+                                <div className="font-bold text-[11px] sm:text-sm text-gray-900 dark:text-white leading-tight">
+                                  {sale.product}
+                                </div>
+                                {/* 모바일에서 날짜/옵션/비고 보이기 */}
+                                <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden"><span className="text-orange-500 font-bold">{sale.date.substring(5)}</span> | {sale.option}</div>
+                                <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate max-w-[120px]">{sale.note}</div>
+                              </td>
+                              <td className="px-6 py-3.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:table-cell">{sale.option}</td>
+                              <td className="px-1 sm:px-6 py-2.5 sm:py-3.5 text-center sm:text-right font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200">{sale.quantity}</td>
+                              <td className="px-1 sm:px-6 py-2.5 sm:py-3.5 text-right font-black whitespace-nowrap text-[11px] sm:text-sm text-gray-900 dark:text-white">{sale.totalPrice.toLocaleString()}원</td>
+                              <td className="px-6 py-3.5 text-gray-500 dark:text-gray-400 text-xs break-all hidden sm:table-cell">{sale.note || '-'}</td>
+                              <td className="px-1 sm:px-6 py-2.5 sm:py-3.5 text-center">
+                                <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => startEdit(sale)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="내역 수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
+                                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1 sm:p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="내역 삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
                                 </div>
                               </td>
                             </tr>
@@ -1656,7 +1711,7 @@ export default function App() {
                   }
 
                   return (
-                    <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+                    <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
                       <div className="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-sm font-bold">
                         <div>
                           <span className="opacity-80 text-gray-500 dark:text-gray-400">총 거래: </span> 
@@ -1672,9 +1727,9 @@ export default function App() {
                           </>
                         )}
                       </div>
-                      <div className="flex gap-5 md:gap-8 text-sm md:text-base items-center">
-                        <div className="font-bold text-gray-500 dark:text-gray-400">총 수량: <span className="font-black text-gray-900 dark:text-white text-lg md:text-xl ml-1">{totalQty}개</span></div>
-                        <div className="font-bold text-gray-500 dark:text-gray-400">총 금액: <span className="font-black text-gray-900 dark:text-white text-lg md:text-xl ml-1">{totalAmount.toLocaleString()}원</span></div>
+                      <div className="flex gap-4 sm:gap-8 text-xs sm:text-base items-center">
+                        <div className="font-bold text-gray-500 dark:text-gray-400">총 수량: <span className="font-black text-gray-900 dark:text-white text-base sm:text-xl ml-1">{totalQty}개</span></div>
+                        <div className="font-bold text-gray-500 dark:text-gray-400">총 금액: <span className="font-black text-gray-900 dark:text-white text-base sm:text-xl ml-1">{totalAmount.toLocaleString()}원</span></div>
                       </div>
                     </div>
                   );
