@@ -197,7 +197,6 @@ export default function App() {
   const isDbConnected = !!supabaseClient;
   const [isLoading, setIsLoading] = useState(false);
   
-  // 💡 Toast 알림 시스템 상태
   const [toasts, setToasts] = useState([]);
   
   const showToast = (message, type = 'info') => {
@@ -1273,7 +1272,7 @@ export default function App() {
 
                 {invTab === 'stock' && pendingRawData.length === 0 && (
                   <>
-                    <div className="px-6 py-3.5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0 shadow-sm z-10 flex-wrap gap-3">
+                    <div className="px-6 py-3.5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0 shadow-sm z-30 flex-wrap gap-3">
                       <div className="flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-2">
                           <label className="text-xs font-bold text-gray-500 dark:text-gray-400">상품명 검색</label>
@@ -1428,6 +1427,35 @@ export default function App() {
                   </>
                 )}
 
+                {invTab === 'stock' && pendingRawData.length > 0 && (
+                  <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-900">
+                    <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-sm shrink-0 gap-3">
+                      <div>
+                        <h3 className="text-base sm:text-lg font-black text-gray-900 dark:text-white flex items-center gap-2"><AlertCircle size={18} className="text-orange-500" /> 인식된 데이터 ({pendingRawData.length}건)<span className="text-xs sm:text-sm bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2.5 py-0.5 rounded-full ml-2 font-bold">총: {pendingRawData.reduce((a, c) => a + c.qty, 0)}개</span></h3>
+                      </div>
+                      <div className="flex gap-2 w-full sm:w-auto"><button onClick={() => setPendingRawData([])} className="flex-1 sm:flex-none px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-sm font-bold transition-colors">취소</button><button onClick={applyPendingData} className="flex-1 sm:flex-none px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white hover:bg-black dark:hover:bg-gray-600 rounded-lg text-sm font-bold shadow-sm transition-colors">매칭 저장 및 반영</button></div>
+                    </div>
+                    <div className="flex-1 overflow-x-auto overflow-y-auto">
+                      <table className="w-full text-sm text-left min-w-[700px]">
+                        <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 text-xs border-b border-gray-100 dark:border-gray-800">
+                          <tr><th className="px-5 py-3.5 w-1/3 font-semibold">Raw Data</th><th className="px-5 py-3.5 text-right font-semibold">수량</th><th className="px-5 py-3.5 font-semibold">매칭 상품</th><th className="px-5 py-3.5 font-semibold">매칭 옵션</th><th className="px-5 py-3.5 text-right font-semibold">판매 금액(원)</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+                          {pendingRawData.map((item, idx) => (
+                            <tr key={idx} className={item.mapped ? "bg-gray-50/50 dark:bg-gray-800/30" : "bg-red-50/50 dark:bg-red-900/10"}>
+                              <td className="px-5 py-3 text-xs"><div className="font-mono text-gray-500 dark:text-gray-400">{item.rawId}</div><div className="font-bold text-gray-900 dark:text-white mt-0.5">{item.rawName.split(',')[0]}</div></td>
+                              <td className="px-5 py-3 text-right font-black text-gray-900 dark:text-white text-base">{item.qty}</td>
+                              <td className="px-5 py-3"><input list="globalProductList" value={item.mapTo.product} onChange={(e) => updatePendingMap(idx, 'product', e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 text-xs font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
+                              <td className="px-5 py-3"><input list="globalOptionList" value={item.mapTo.option} onChange={(e) => updatePendingMap(idx, 'option', e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
+                              <td className="px-5 py-3 text-right"><input type="number" inputMode="numeric" value={item.mapTo.sellPrice || ''} onChange={(e) => updatePendingMap(idx, 'sellPrice', e.target.value)} className="w-24 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 text-xs text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 {invTab === 'mapping' && (
                   <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900 relative">
                     <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 shadow-sm shrink-0">
@@ -1502,10 +1530,8 @@ export default function App() {
               </div>
             ) : (
               <>
-                {/* 💡 z-10 을 z-30 으로 올려서 달력이 묻히지 않게 수정 */}
                 <div className="px-6 py-3.5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-sm z-30">
                   <div className="flex flex-wrap items-center gap-4">
-                    {/* 💡 누락되었던 판매일(기간) 선택 필터 복구 및 디자인 맞춤 */}
                     <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 w-full sm:w-auto shadow-sm">
                       <span className="text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">조회 기간</span>
                       <CustomDatePicker 
