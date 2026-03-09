@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, RefreshCw, TrendingUp } from 'lucide-react';
+import { Plus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, RefreshCw, TrendingUp, Minus } from 'lucide-react';
 
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
@@ -804,17 +804,35 @@ export default function App() {
                           </span>
                         )}
                       </label>
-                      <input 
-                        type="number" 
-                        inputMode="numeric" 
-                        pattern="[0-9]*" 
-                        name="quantity" 
-                        min="1" 
-                        value={formData.quantity} 
-                        onChange={handleFormChange} 
-                        className={`w-full border rounded-md p-2 text-sm outline-none transition text-right bg-white dark:bg-gray-800 ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'border-red-400 dark:border-red-600 focus:ring-2 focus:ring-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' : 'border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-violet-500 text-gray-900 dark:text-white'}`} 
-                        required 
-                      />
+                      {/* 커스텀 증감 버튼 디자인 적용 */}
+                      <div className={`flex items-center w-full border rounded-md overflow-hidden transition-colors bg-white dark:bg-gray-800 ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'border-red-400 dark:border-red-600 focus-within:ring-2 focus-within:ring-red-500' : 'border-gray-300 dark:border-gray-700 focus-within:ring-2 focus-within:ring-violet-500'}`}>
+                        <button 
+                          type="button" 
+                          onClick={() => { const q = Number(formData.quantity) || 0; if (q > 1) handleFormChange({ target: { name: 'quantity', value: q - 1 } }); }}
+                          className="px-3 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-violet-600 dark:hover:text-violet-400 transition-colors border-r border-gray-200 dark:border-gray-700 focus:outline-none"
+                        >
+                          <Minus size={14} strokeWidth={2.5} />
+                        </button>
+                        <input 
+                          type="text" 
+                          inputMode="numeric" 
+                          name="quantity" 
+                          value={formData.quantity} 
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            handleFormChange({ target: { name: 'quantity', value: val } });
+                          }} 
+                          className={`flex-1 w-full py-2 px-1 text-sm outline-none text-center font-bold bg-transparent ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20' : 'text-gray-900 dark:text-white'}`} 
+                          required 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => { const q = Number(formData.quantity) || 0; handleFormChange({ target: { name: 'quantity', value: q + 1 } }); }}
+                          className="px-3 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-violet-600 dark:hover:text-violet-400 transition-colors border-l border-gray-200 dark:border-gray-700 focus:outline-none"
+                        >
+                          <Plus size={14} strokeWidth={2.5} />
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">판매 금액 (원)</label>
