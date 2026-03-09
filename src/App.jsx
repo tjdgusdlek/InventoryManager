@@ -1206,6 +1206,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* 💡 실시간 재고 현황 메인 화면 모바일 UI 최적화 */}
           <div className="lg:col-span-8">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col relative transition-colors">
               <div className="bg-gray-50 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex justify-between items-center shrink-0">
@@ -1216,10 +1217,10 @@ export default function App() {
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 sticky top-0 shadow-sm border-b border-gray-100 dark:border-gray-800">
                     <tr>
-                      <th className="px-5 py-3.5 font-semibold whitespace-nowrap">상품명</th>
-                      <th className="px-5 py-3.5 font-semibold whitespace-nowrap">옵션명</th>
-                      <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap">총 수량</th>
-                      <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap">남은 수량</th>
+                      <th className="px-4 sm:px-5 py-3.5 font-semibold w-[45%] sm:w-auto">상품명 <span className="sm:hidden font-normal text-gray-400 ml-1">/ 옵션</span></th>
+                      <th className="px-5 py-3.5 font-semibold hidden sm:table-cell">옵션명</th>
+                      <th className="px-2 sm:px-4 py-3.5 font-semibold text-center w-[25%] sm:w-auto whitespace-nowrap">총 수량</th>
+                      <th className="px-2 sm:px-4 py-3.5 font-semibold text-center w-[30%] sm:w-auto whitespace-nowrap">남은 수량</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -1235,11 +1236,15 @@ export default function App() {
                     ) : (
                       currentInventory.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
-                          <td className="px-5 py-3 font-bold text-gray-900 dark:text-white whitespace-nowrap">{item.product}</td>
-                          <td className="px-5 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap text-sm">{item.option}</td>
-                          <td className="px-4 py-3 text-center font-semibold text-gray-600 dark:text-gray-400">{item.qty}</td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md font-black text-sm ${item.remainQty === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-orange-500'}`}>{item.remainQty}</span>
+                          <td className="px-4 sm:px-5 py-3">
+                            <div className="font-bold text-gray-900 dark:text-white leading-tight break-keep">{item.product}</div>
+                            {/* 모바일에서는 옵션명을 상품명 아래에 표시 */}
+                            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden">{item.option}</div>
+                          </td>
+                          <td className="px-5 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap text-sm hidden sm:table-cell">{item.option}</td>
+                          <td className="px-2 sm:px-4 py-3 text-center font-semibold text-gray-600 dark:text-gray-400">{item.qty}</td>
+                          <td className="px-2 sm:px-4 py-3 text-center">
+                            <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md font-black text-xs sm:text-sm ${item.remainQty === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-orange-500'}`}>{item.remainQty}</span>
                           </td>
                         </tr>
                       ))
@@ -1248,9 +1253,9 @@ export default function App() {
                   </tbody>
                   <tfoot className="bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 font-bold text-gray-800 dark:text-gray-200 sticky bottom-0">
                     <tr>
-                      <td colSpan="2" className="px-5 py-4 text-center text-xs">전체 합계</td>
-                      <td className="px-4 py-4 text-center text-base">{currentInventory.reduce((acc, curr) => acc + curr.qty, 0)}</td>
-                      <td className="px-4 py-4 text-center text-orange-500 text-xl font-black">{currentInventory.reduce((acc, curr) => acc + curr.remainQty, 0)}</td>
+                      <td colSpan="2" className="px-4 sm:px-5 py-4 text-center text-xs">전체 합계</td>
+                      <td className="px-2 sm:px-4 py-4 text-center text-base">{currentInventory.reduce((acc, curr) => acc + curr.qty, 0)}</td>
+                      <td className="px-2 sm:px-4 py-4 text-center text-orange-500 text-lg sm:text-xl font-black">{currentInventory.reduce((acc, curr) => acc + curr.remainQty, 0)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1313,7 +1318,6 @@ export default function App() {
                       </div>
                       
                       <div className="flex items-center gap-2 ml-auto w-full sm:w-auto justify-end">
-                        {/* 💡 모바일 환경에서는 내보내기 버튼 숨김 (hidden sm:flex) */}
                         <button onClick={() => exportToCSV(processedInventory, 'inventory')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700 shrink-0">
                           <Download size={14} /> <span>CSV 내보내기</span>
                         </button>
@@ -1327,13 +1331,16 @@ export default function App() {
                     {showRawDataInput && (
                       <div className="px-4 sm:px-6 py-4 sm:py-5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 shrink-0 shadow-inner flex flex-col gap-4">
                         <div className="flex gap-4 sm:gap-6 border-b border-gray-200 dark:border-gray-700 pb-3">
+                          {/* 💡 이모티콘 제거하고 깔끔한 아이콘으로 복구 */}
                           <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
                             <input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
-                            ✏️ 수동 직접 입력
+                            <PenTool size={16} className={addMode === 'manual' ? "text-orange-500" : "text-gray-400"} />
+                            <span className={addMode === 'manual' ? "text-orange-500" : ""}>수동 직접 입력</span>
                           </label>
                           <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
                             <input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
-                            📋 텍스트 일괄 붙여넣기 (Raw Data)
+                            <ClipboardList size={16} className={addMode === 'bulk' ? "text-orange-500" : "text-gray-400"} />
+                            <span className={addMode === 'bulk' ? "text-orange-500" : ""}>텍스트 일괄 붙여넣기 (Raw Data)</span>
                           </label>
                         </div>
 
@@ -1378,17 +1385,17 @@ export default function App() {
                       </div>
                     )}
 
+                    {/* 💡 재고 현황 모달창 모바일 UI 최적화 */}
                     <div className="flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-gray-900 relative">
                       <table className="w-full text-sm text-left min-w-[340px] sm:min-w-[700px]">
                         <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 z-10 text-[11px] sm:text-xs">
                           <tr>
-                            {/* 💡 모바일 환경에서 <td> 개수가 맞도록 hidden 처리 세분화 */}
-                            <th className="px-2 sm:px-6 py-3 font-semibold w-[40%] sm:w-[25%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 <span className="sm:hidden font-normal text-gray-400">/ 정보</span> {getSortIcon('product')}</div></th>
+                            <th className="px-3 sm:px-6 py-3 font-semibold w-[45%] sm:w-[25%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 <span className="sm:hidden font-normal text-gray-400">/ 정보</span> {getSortIcon('product')}</div></th>
                             <th className="px-6 py-3 font-semibold w-[20%] hidden sm:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
-                            <th className="px-1 sm:px-6 py-3 font-semibold text-center sm:text-right w-[20%] sm:w-[15%] whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('qty')}><div className="flex items-center justify-center sm:justify-end gap-1">총 수량 {getSortIcon('qty')}</div></th>
+                            <th className="px-1 sm:px-6 py-3 font-semibold text-center sm:text-right w-[15%] sm:w-[15%] whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('qty')}><div className="flex items-center justify-center sm:justify-end gap-1">총 수량 {getSortIcon('qty')}</div></th>
                             <th className="px-6 py-3 font-semibold text-right hidden sm:table-cell w-[15%] whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('sellPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('sellPrice')}</div></th>
-                            <th className="px-1 sm:px-6 py-3 font-semibold text-center w-[20%] sm:w-28 whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은 수량 {getSortIcon('remainQty')}</div></th>
-                            <th className="px-1 sm:px-6 py-3 font-semibold text-center w-[20%] sm:w-24 whitespace-nowrap">관리</th>
+                            <th className="px-1 sm:px-6 py-3 font-semibold text-center w-[20%] sm:w-[15%] whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은 수량 {getSortIcon('remainQty')}</div></th>
+                            <th className="px-1 sm:px-6 py-3 font-semibold text-center w-[20%] sm:w-[10%] whitespace-nowrap">관리</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
@@ -1409,10 +1416,10 @@ export default function App() {
                                       <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" />
                                     </td>
                                     <td className="px-1 sm:px-4 py-2 text-center sm:text-right">
-                                      {/* 💡 모바일 환경: +/- 버튼 숨기고 숫자패드 입력만 활성화 */}
-                                      <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto border border-gray-300 dark:border-gray-600 rounded overflow-hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
+                                      {/* 모바일 환경: 숫자패드 입력만 활성화 */}
+                                      <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto sm:border sm:border-gray-300 dark:sm:border-gray-600 rounded overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
                                          <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; if (q > 0) setInvEditForm({...invEditForm, qty: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
-                                         <input type="text" inputMode="numeric" pattern="[0-9]*" value={invEditForm.qty} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, qty: val}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-transparent outline-none" />
+                                         <input type="text" inputMode="numeric" pattern="[0-9]*" value={invEditForm.qty} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, qty: val}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" />
                                          <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; setInvEditForm({...invEditForm, qty: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
                                       </div>
                                     </td>
@@ -1431,18 +1438,18 @@ export default function App() {
                               }
                               return (
                                 <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 group transition-colors">
-                                  <td className="px-2 sm:px-6 py-3">
+                                  <td className="px-3 sm:px-6 py-2.5 sm:py-3">
                                     <div className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white break-keep leading-tight">{item.product}</div>
-                                    <div className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 sm:hidden">{item.option}</div>
-                                    <div className="text-[10px] text-gray-400 dark:text-gray-500 sm:hidden mt-0.5 font-bold">{item.sellPrice.toLocaleString()}원</div>
+                                    <div className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden">{item.option}</div>
+                                    <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 sm:hidden mt-0.5">{item.sellPrice.toLocaleString()}원</div>
                                   </td>
                                   <td className="px-6 py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-keep hidden sm:table-cell">{item.option}</td>
-                                  <td className="px-1 sm:px-6 py-3 text-center sm:text-right font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200">{item.qty}</td>
+                                  <td className="px-1 sm:px-6 py-2.5 sm:py-3 text-center sm:text-right font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200">{item.qty}</td>
                                   <td className="px-6 py-3 text-right font-black text-xs sm:text-sm text-gray-900 dark:text-white hidden sm:table-cell">{item.sellPrice.toLocaleString()}원</td>
-                                  <td className="px-1 sm:px-6 py-3 text-center">
+                                  <td className="px-1 sm:px-6 py-2.5 sm:py-3 text-center">
                                     <span className={`inline-flex items-center justify-center px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md font-black text-[10px] sm:text-sm ${item.remainQty === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-orange-500'}`}>{item.remainQty}</span>
                                   </td>
-                                  <td className="px-1 sm:px-6 py-3 text-center">
+                                  <td className="px-1 sm:px-6 py-2.5 sm:py-3 text-center">
                                     <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                       <button onClick={() => startInvEdit(item)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="재고 수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
                                       <button onClick={() => handleDeleteInv(item.id)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1 sm:p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="품목 삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
@@ -1492,13 +1499,14 @@ export default function App() {
                     <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 shadow-sm shrink-0">
                       <p className="text-[11px] sm:text-sm text-gray-600 dark:text-gray-400 font-medium">이곳에서 외부 데이터의 <strong className="font-bold text-gray-900 dark:text-white">옵션ID</strong>와 내부 <strong className="font-bold text-gray-900 dark:text-white">상품/옵션명</strong>의 연결 상태를 확인하고 판매단가를 수정할 수 있습니다.</p>
                     </div>
-                    <table className="w-full text-sm text-left min-w-[400px] sm:min-w-full">
+                    {/* 💡 매칭 관리 모바일 UI 넓이 비율 조절 */}
+                    <table className="w-full text-sm text-left min-w-[340px] sm:min-w-[600px]">
                       <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 text-[11px] sm:text-xs">
                         <tr>
                           <th className="px-3 sm:px-6 py-3 font-semibold w-[35%] sm:w-1/4">옵션ID / 원본명</th>
-                          <th className="px-2 sm:px-6 py-3 font-semibold w-[30%] sm:w-1/4">매칭 상품<span className="sm:hidden font-normal text-gray-400">/옵션</span></th>
+                          <th className="px-2 sm:px-6 py-3 font-semibold w-[35%] sm:w-1/4">매칭 상품<span className="sm:hidden font-normal text-gray-400">/옵션</span></th>
                           <th className="px-6 py-3 font-semibold hidden sm:table-cell w-1/4">매칭 옵션명</th>
-                          <th className="px-2 sm:px-6 py-3 font-semibold text-right w-[20%] sm:w-auto whitespace-nowrap">판매 금액</th>
+                          <th className="px-2 sm:px-6 py-3 font-semibold text-right w-[15%] sm:w-auto whitespace-nowrap">판매 금액</th>
                           <th className="px-2 sm:px-6 py-3 font-semibold text-center w-[15%] sm:w-24 whitespace-nowrap">관리</th>
                         </tr>
                       </thead>
@@ -1523,7 +1531,6 @@ export default function App() {
                                       <input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" />
                                     </td>
                                     <td className="px-2 sm:px-4 py-2 text-right">
-                                      {/* 모바일 환경: 숫자패드 적용 */}
                                       <input type="text" inputMode="numeric" pattern="[0-9]*" value={mapEditForm.sellPrice === 0 ? '' : Number(mapEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setMapEditForm({...mapEditForm, sellPrice: Number(rawValue)}); }} className="w-full min-w-[50px] sm:min-w-[70px] h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
                                     </td>
                                     <td className="px-2 sm:px-4 py-2 text-center">
@@ -1608,7 +1615,7 @@ export default function App() {
                   </div>
                   
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                     {/* 💡 모바일 환경에서는 내보내기 버튼 숨김 (hidden sm:flex) */}
+                     {/* 모바일 환경에서는 내보내기 버튼 숨김 (hidden sm:flex) */}
                      <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700">
                        <Download size={14} /> <span>CSV 내보내기</span>
                      </button>
@@ -1619,7 +1626,6 @@ export default function App() {
                   <table className="w-full text-sm text-left min-w-[340px] sm:min-w-[700px]">
                     <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 z-10 text-[11px] sm:text-xs">
                       <tr>
-                        {/* 💡 모바일 환경에서 <td> 개수가 맞도록 hidden 처리 세분화 */}
                         <th className="px-2 sm:px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hidden sm:table-cell sm:w-[15%] transition-colors" onClick={() => requestSort('date')}><div className="flex items-center gap-1">판매일 {getSortIcon('date')}</div></th>
                         <th className="px-2 sm:px-6 py-3 font-semibold whitespace-nowrap cursor-pointer w-[40%] sm:w-[22%] transition-colors" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 <span className="sm:hidden font-normal text-gray-400">/ 정보</span> {getSortIcon('product')}</div></th>
                         <th className="px-6 py-3 font-semibold whitespace-nowrap cursor-pointer hidden sm:table-cell w-[16%] transition-colors" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
@@ -1640,13 +1646,11 @@ export default function App() {
                                 <td className="px-2 sm:px-4 py-2 hidden sm:table-cell"><div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500"><CustomDatePicker startDate={editForm.date} onChange={(start) => setEditForm({...editForm, date: start})} wrapperClassName="w-full" className="w-full pl-2 py-1.5 text-xs bg-transparent outline-none whitespace-nowrap font-bold text-gray-900 dark:text-white" isRangeMode={false} /></div></td>
                                 <td className="px-2 sm:px-4 py-2">
                                   <input type="text" value={editForm.product} onChange={e => setEditForm({...editForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
-                                  {/* 모바일에서는 옵션, 비고를 상품명 칸 아래에 배치 */}
                                   <input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1" placeholder="옵션명" />
                                   <input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1" placeholder="비고" />
                                 </td>
                                 <td className="px-4 py-2 hidden sm:table-cell"><input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" /></td>
                                 <td className="px-1 sm:px-4 py-2 text-center">
-                                  {/* 💡 모바일 환경: +/- 버튼 숨기고 (hidden sm:flex), 숫자패드 입력(inputMode="numeric")만 활성화 */}
                                   <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto sm:border sm:border-gray-300 dark:sm:border-gray-600 rounded-md overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
                                      <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
                                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: val}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" />
@@ -1654,7 +1658,6 @@ export default function App() {
                                   </div>
                                 </td>
                                 <td className="px-1 sm:px-4 py-2 text-right">
-                                  {/* 💡 모바일 환경: 숫자패드 입력만 활성화 */}
                                   <input type="text" inputMode="numeric" pattern="[0-9]*" value={editForm.price === 0 ? '' : Number(editForm.price).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(rawValue)}); }} className="w-full min-w-[50px] sm:min-w-[70px] h-8 ml-auto border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
                                 </td>
                                 <td className="px-4 py-2 hidden sm:table-cell"><input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="비고" /></td>
@@ -1674,7 +1677,6 @@ export default function App() {
                                 <div className="font-bold text-[11px] sm:text-sm text-gray-900 dark:text-white leading-tight">
                                   {sale.product}
                                 </div>
-                                {/* 모바일에서 날짜/옵션/비고 보이기 */}
                                 <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden"><span className="text-orange-500 font-bold">{sale.date.substring(5)}</span> | {sale.option}</div>
                                 <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate max-w-[120px]">{sale.note}</div>
                               </td>
