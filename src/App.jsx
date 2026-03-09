@@ -1206,7 +1206,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* 💡 실시간 재고 현황 메인 화면 모바일 UI 최적화 */}
           <div className="lg:col-span-8">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col relative transition-colors">
               <div className="bg-gray-50 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex justify-between items-center shrink-0">
@@ -1238,7 +1237,6 @@ export default function App() {
                         <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
                           <td className="px-4 sm:px-5 py-3">
                             <div className="font-bold text-gray-900 dark:text-white leading-tight break-keep">{item.product}</div>
-                            {/* 모바일에서는 옵션명을 상품명 아래에 표시 */}
                             <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden">{item.option}</div>
                           </td>
                           <td className="px-5 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap text-sm hidden sm:table-cell">{item.option}</td>
@@ -1265,7 +1263,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* --- 모달 (상세 보기) 영역 --- */}
       {maximizedView && (
         <div className="fixed inset-0 bg-gray-900/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-6 lg:p-8 transition-colors">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[85vh] flex flex-col overflow-hidden border-2 border-gray-200 dark:border-gray-700">
@@ -1331,7 +1328,6 @@ export default function App() {
                     {showRawDataInput && (
                       <div className="px-4 sm:px-6 py-4 sm:py-5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 shrink-0 shadow-inner flex flex-col gap-4">
                         <div className="flex gap-4 sm:gap-6 border-b border-gray-200 dark:border-gray-700 pb-3">
-                          {/* 💡 이모티콘 제거하고 깔끔한 아이콘으로 복구 */}
                           <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
                             <input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
                             <PenTool size={16} className={addMode === 'manual' ? "text-orange-500" : "text-gray-400"} />
@@ -1385,7 +1381,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* 💡 재고 현황 모달창 모바일 UI 최적화 */}
                     <div className="flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-gray-900 relative">
                       <table className="w-full text-sm text-left min-w-[340px] sm:min-w-[700px]">
                         <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 z-10 text-[11px] sm:text-xs">
@@ -1408,7 +1403,6 @@ export default function App() {
                                   <tr key={item.id} className="bg-orange-50/50 dark:bg-orange-900/10">
                                     <td className="px-2 sm:px-4 py-2">
                                       <input type="text" value={invEditForm.product} onChange={e => setInvEditForm({...invEditForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
-                                      {/* 모바일에서는 옵션명, 금액을 상품명 칸 아래에서 편집 가능하도록 표시 */}
                                       <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1" placeholder="옵션명" />
                                       <input type="text" inputMode="numeric" pattern="[0-9]*" value={invEditForm.sellPrice === 0 ? '' : Number(invEditForm.sellPrice).toLocaleString()} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(rawValue)}); }} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1 font-bold text-right" placeholder="판매 금액" />
                                     </td>
@@ -1416,7 +1410,6 @@ export default function App() {
                                       <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" />
                                     </td>
                                     <td className="px-1 sm:px-4 py-2 text-center sm:text-right">
-                                      {/* 모바일 환경: 숫자패드 입력만 활성화 */}
                                       <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto sm:border sm:border-gray-300 dark:sm:border-gray-600 rounded overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
                                          <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; if (q > 0) setInvEditForm({...invEditForm, qty: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
                                          <input type="text" inputMode="numeric" pattern="[0-9]*" value={invEditForm.qty} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, qty: val}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" />
@@ -1459,8 +1452,20 @@ export default function App() {
                               );
                             })
                           )}
+                          <tr className="h-full pointer-events-none"><td colSpan="6" className="p-0 border-0"></td></tr>
                         </tbody>
                       </table>
+                    </div>
+                    {/* 💡 삭제되었던 재고 현황 하단 총합 복구 */}
+                    <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+                      <div className="text-[11px] sm:text-sm font-bold text-gray-500 dark:text-gray-400">
+                        <span className="sm:hidden">총 {processedInventory.length}건</span>
+                        <span className="hidden sm:inline">검색된 품목: {processedInventory.length}건</span>
+                      </div>
+                      <div className="flex gap-4 sm:gap-8 text-xs sm:text-base items-center">
+                        <div className="font-bold text-gray-500 dark:text-gray-400">총 수량: <span className="font-black text-gray-900 dark:text-white text-base sm:text-xl ml-1">{processedInventory.reduce((acc, curr) => acc + curr.qty, 0)}개</span></div>
+                        <div className="font-bold text-gray-500 dark:text-gray-400">남은 수량: <span className="font-black text-orange-500 text-base sm:text-xl ml-1">{processedInventory.reduce((acc, curr) => acc + curr.remainQty, 0)}개</span></div>
+                      </div>
                     </div>
                   </>
                 )}
@@ -1499,7 +1504,6 @@ export default function App() {
                     <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 shadow-sm shrink-0">
                       <p className="text-[11px] sm:text-sm text-gray-600 dark:text-gray-400 font-medium">이곳에서 외부 데이터의 <strong className="font-bold text-gray-900 dark:text-white">옵션ID</strong>와 내부 <strong className="font-bold text-gray-900 dark:text-white">상품/옵션명</strong>의 연결 상태를 확인하고 판매단가를 수정할 수 있습니다.</p>
                     </div>
-                    {/* 💡 매칭 관리 모바일 UI 넓이 비율 조절 */}
                     <table className="w-full text-sm text-left min-w-[340px] sm:min-w-[600px]">
                       <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 text-[11px] sm:text-xs">
                         <tr>
@@ -1524,7 +1528,6 @@ export default function App() {
                                     </td>
                                     <td className="px-2 sm:px-4 py-2">
                                       <input type="text" value={mapEditForm.product} onChange={e => setMapEditForm({...mapEditForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
-                                      {/* 모바일에서는 옵션명을 아래에 배치 */}
                                       <input type="text" value={mapEditForm.option} onChange={e => setMapEditForm({...mapEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden mt-1" placeholder="옵션명" />
                                     </td>
                                     <td className="px-4 py-2 hidden sm:table-cell">
@@ -1615,7 +1618,6 @@ export default function App() {
                   </div>
                   
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                     {/* 모바일 환경에서는 내보내기 버튼 숨김 (hidden sm:flex) */}
                      <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700">
                        <Download size={14} /> <span>CSV 내보내기</span>
                      </button>
