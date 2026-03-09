@@ -1,20 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* 💡 브라우저 기본 UI(스크롤바 등)를 라이트/다크 모드에 맞게 자동 전환 */
-:root {
-  color-scheme: light dark;
-}
-
-/* 기본 배경색과 텍스트 색상을 미리 지정하여 깜빡임 방지 */
-body {
-  margin: 0;
-  min-height: 100vh;
-}
+@import "tailwindcss";
 
 @layer base {
+  /* 💡 시스템 다크/라이트 모드 설정에 따라 브라우저 기본 스크롤바 색상 자동 변경 */
+  :root {
+    color-scheme: light dark;
+  }
+
+  /* 기본 배경색과 텍스트 색상을 미리 지정하여 초기 렌더링 시 깜빡임 방지 */
   body {
+    margin: 0;
+    min-height: 100vh;
     @apply bg-gray-50 text-gray-800 dark:bg-gray-950 dark:text-gray-200;
   }
 }

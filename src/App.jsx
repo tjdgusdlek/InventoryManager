@@ -223,16 +223,13 @@ export default function App() {
 
   useEffect(() => {
     if (!supabaseUrl || !supabaseKey) return;
-
     const initSupabase = () => {
       if (window.supabase && !supabaseClient) {
         setSupabaseClient(window.supabase.createClient(supabaseUrl, supabaseKey));
       }
     };
-
-    if (window.supabase) {
-      initSupabase();
-    } else {
+    if (window.supabase) initSupabase();
+    else {
       let script = document.getElementById('supabase-js-script');
       if (!script) {
         script = document.createElement('script');
@@ -250,17 +247,17 @@ export default function App() {
     if (!supabaseClient || !isAuthorized) return; 
     setIsLoading(true);
     try {
-      const { data: invData, error: invErr } = await supabaseClient.from('inventory').select('*').order('id', { ascending: true });
-      if (!invErr && invData) setInventoryData(invData);
+      const { data: invData } = await supabaseClient.from('inventory').select('*').order('id', { ascending: true });
+      if (invData) setInventoryData(invData);
 
-      const { data: salesData, error: salesErr } = await supabaseClient.from('sales').select('*').order('date', { ascending: false });
-      if (!salesErr && salesData) setSales(salesData);
+      const { data: salesData } = await supabaseClient.from('sales').select('*').order('date', { ascending: false });
+      if (salesData) setSales(salesData);
 
-      const { data: mapData, error: mapErr } = await supabaseClient.from('option_mappings').select('*');
-      if (!mapErr && mapData) setOptionMappings(mapData);
+      const { data: mapData } = await supabaseClient.from('option_mappings').select('*');
+      if (mapData) setOptionMappings(mapData);
 
-      const { data: settleData, error: settleErr } = await supabaseClient.from('settlement').select('*').eq('id', 1).maybeSingle();
-      if (!settleErr && settleData) {
+      const { data: settleData } = await supabaseClient.from('settlement').select('*').eq('id', 1).maybeSingle();
+      if (settleData) {
          setSettlementData({
            intermediate: settleData.intermediate || 0,
            account: settleData.account || 0,
@@ -288,9 +285,7 @@ export default function App() {
   };
 
   const handlePinKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !pinDigits[index] && index > 0) {
-      pinRefs.current[index - 1].focus();
-    }
+    if (e.key === 'Backspace' && !pinDigits[index] && index > 0) pinRefs.current[index - 1].focus();
   };
 
   const handlePinPaste = (e) => {
@@ -455,9 +450,9 @@ export default function App() {
         cash: settlementData.cash
       }]);
       if (error) showToast("DB 저장에 실패했습니다.", "error");
-      else showToast("정산 데이터가 안전하게 저장되었습니다!", "success");
+      else showToast("정산 데이터가 저장되었습니다!", "success");
     } else {
-      showToast("로컬 환경에 임시 저장되었습니다.", "success");
+      showToast("로컬 환경에 저장되었습니다.", "success");
     }
     setIsSettlementSaving(false);
   };
@@ -571,15 +566,12 @@ export default function App() {
   const periodSalesSummary = useMemo(() => {
     const periodSales = sales.filter(sale => sale.date >= startDate && sale.date <= endDate);
     const summary = {};
-    let totalQty = 0;
-    let totalAmount = 0;
+    let totalQty = 0; let totalAmount = 0;
     periodSales.forEach(sale => {
       const key = sale.product;
       if (!summary[key]) summary[key] = { product: sale.product, quantity: 0, amount: 0 };
-      summary[key].quantity += sale.quantity;
-      summary[key].amount += sale.totalPrice;
-      totalQty += sale.quantity;
-      totalAmount += sale.totalPrice;
+      summary[key].quantity += sale.quantity; summary[key].amount += sale.totalPrice;
+      totalQty += sale.quantity; totalAmount += sale.totalPrice;
     });
     return { list: Object.values(summary).sort((a, b) => b.quantity - a.quantity), totalQty, totalAmount };
   }, [sales, startDate, endDate]);
@@ -590,16 +582,13 @@ export default function App() {
     sales.forEach(sale => {
       const key = sale.product;
       if (!summary[key]) summary[key] = { product: sale.product, quantity: 0, amount: 0 };
-      summary[key].quantity += sale.quantity;
-      summary[key].amount += sale.totalPrice;
-      totalQty += sale.quantity;
-      totalAmount += sale.totalPrice;
+      summary[key].quantity += sale.quantity; summary[key].amount += sale.totalPrice;
+      totalQty += sale.quantity; totalAmount += sale.totalPrice;
     });
     return { list: Object.values(summary).sort((a, b) => b.quantity - a.quantity), totalQty, totalAmount };
   }, [sales]);
 
   const totalRemainQty = useMemo(() => currentInventory.reduce((acc, curr) => acc + curr.remainQty, 0), [currentInventory]);
-  
   const todayDetailedSales = useMemo(() => {
     const todaysSales = sales.filter(sale => sale.date === today);
     return todaysSales.sort((a, b) => {
@@ -607,7 +596,6 @@ export default function App() {
       return a.option.localeCompare(b.option);
     });
   }, [sales, today]);
-  
   const todayTotalQty = useMemo(() => todayDetailedSales.reduce((acc, sale) => acc + sale.quantity, 0), [todayDetailedSales]);
   const todayTotalAmount = useMemo(() => todayDetailedSales.reduce((acc, sale) => acc + sale.totalPrice, 0), [todayDetailedSales]);
 
@@ -728,19 +716,15 @@ export default function App() {
     data.sort((a, b) => {
       let valA = a[sortConfig.key] ?? ''; let valB = b[sortConfig.key] ?? '';
       let comparison = 0;
-      
-      if (typeof valA === 'number' && typeof valB === 'number') {
-        comparison = valA - valB;
-      } else {
+      if (typeof valA === 'number' && typeof valB === 'number') comparison = valA - valB;
+      else {
         if (valA < valB) comparison = -1;
         else if (valA > valB) comparison = 1;
       }
-
       if (comparison !== 0) return sortConfig.direction === 'asc' ? comparison : -comparison;
       if (a.product !== b.product) return a.product.localeCompare(b.product);
       return a.option.localeCompare(b.option);
     });
-
     return data;
   }, [maximizedView, sales, startDate, endDate, sortConfig, searchProduct, searchOption]);
 
@@ -834,7 +818,6 @@ export default function App() {
 
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* --- 새 판매 등록 --- */}
           <div className="lg:col-span-4">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col transition-colors">
               <div className="bg-gray-50/80 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex items-center gap-2 shrink-0">
@@ -845,8 +828,8 @@ export default function App() {
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">판매일</label>
                     <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 pr-1.5 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 shadow-sm">
-                      <CustomDatePicker startDate={formData.date} onChange={(start) => setFormData(prev => ({ ...prev, date: start }))} wrapperClassName="flex-1" className="w-full px-3 py-2 text-sm bg-transparent font-bold dark:text-white" isRangeMode={false} />
-                      <button type="button" onClick={() => setFormData(prev => ({ ...prev, date: today }))} className="shrink-0 px-2.5 py-1 text-xs rounded border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-bold bg-white dark:bg-gray-800 transition-colors">오늘</button>
+                      <CustomDatePicker startDate={formData.date} onChange={(start) => setFormData(prev => ({ ...prev, date: start }))} wrapperClassName="flex-1" className="w-full px-3 py-2 text-sm bg-transparent font-bold dark:text-white whitespace-nowrap" isRangeMode={false} />
+                      <button type="button" onClick={() => setFormData(prev => ({ ...prev, date: today }))} className="shrink-0 px-2.5 py-1 text-xs rounded border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-bold bg-white dark:bg-gray-800 transition-colors whitespace-nowrap">오늘</button>
                     </div>
                   </div>
                   <div className="md:col-span-2">
@@ -868,35 +851,15 @@ export default function App() {
                       <label className="flex justify-between items-end text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">
                         <span>판매 개수</span>
                         {selectedRemainQty !== null && (
-                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${formData.quantity > selectedRemainQty ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
+                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${formData.quantity > selectedRemainQty ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'} whitespace-nowrap`}>
                             잔여: {selectedRemainQty}개
                           </span>
                         )}
                       </label>
                       <div className={`flex items-center w-full border rounded-lg overflow-hidden transition-colors shadow-sm bg-white dark:bg-gray-800 ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'border-red-400 dark:border-red-600 focus-within:ring-1 focus-within:border-red-500 focus-within:ring-red-500' : 'border-gray-300 dark:border-gray-700 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500'}`}>
-                        <button 
-                          type="button" 
-                          onClick={() => { const q = Number(formData.quantity) || 0; if (q > 1) handleFormChange({ target: { name: 'quantity', value: q - 1 } }); }}
-                          className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-orange-500 dark:hover:text-orange-400 transition-colors border-r border-gray-200 dark:border-gray-700 focus:outline-none"
-                        >
-                          <Minus size={14} strokeWidth={2.5} />
-                        </button>
-                        <input 
-                          type="text" 
-                          inputMode="numeric" 
-                          name="quantity" 
-                          value={formData.quantity} 
-                          onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'quantity', value: val } }); }} 
-                          className={`flex-1 w-full py-2.5 px-1 text-sm outline-none text-center font-black bg-transparent ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10' : 'text-gray-900 dark:text-white'}`} 
-                          required 
-                        />
-                        <button 
-                          type="button" 
-                          onClick={() => { const q = Number(formData.quantity) || 0; handleFormChange({ target: { name: 'quantity', value: q + 1 } }); }}
-                          className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-orange-500 dark:hover:text-orange-400 transition-colors border-l border-gray-200 dark:border-gray-700 focus:outline-none"
-                        >
-                          <Plus size={14} strokeWidth={2.5} />
-                        </button>
+                        <button type="button" onClick={() => { const q = Number(formData.quantity) || 0; if (q > 1) handleFormChange({ target: { name: 'quantity', value: q - 1 } }); }} className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-orange-500 dark:hover:text-orange-400 transition-colors border-r border-gray-200 dark:border-gray-700 focus:outline-none"><Minus size={14} strokeWidth={2.5} /></button>
+                        <input type="text" inputMode="numeric" name="quantity" value={formData.quantity} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'quantity', value: val } }); }} className={`flex-1 w-full py-2.5 px-1 text-sm outline-none text-center font-black bg-transparent ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10' : 'text-gray-900 dark:text-white'}`} required />
+                        <button type="button" onClick={() => { const q = Number(formData.quantity) || 0; handleFormChange({ target: { name: 'quantity', value: q + 1 } }); }} className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-orange-500 dark:hover:text-orange-400 transition-colors border-l border-gray-200 dark:border-gray-700 focus:outline-none"><Plus size={14} strokeWidth={2.5} /></button>
                       </div>
                     </div>
                     <div>
@@ -910,7 +873,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="mt-auto pt-2">
-                  <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md">
+                  <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md whitespace-nowrap">
                     판매 내역 추가
                   </button>
                 </div>
@@ -921,10 +884,10 @@ export default function App() {
           <div className="lg:col-span-8">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col transition-colors">
               <div className="flex bg-gray-50/80 dark:bg-gray-800/50 pt-3 px-4 gap-2 border-b border-gray-200 dark:border-gray-800 shrink-0">
-                <button onClick={() => setSummaryTab('sales')} className={`px-5 py-2.5 rounded-t-xl font-bold text-sm transition-colors flex items-center gap-2 ${summaryTab === 'sales' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827] relative z-10' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}`}>
+                <button onClick={() => setSummaryTab('sales')} className={`px-5 py-2.5 rounded-t-xl font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${summaryTab === 'sales' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827] relative z-10' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}`}>
                   <PieChart size={16} className={summaryTab === 'sales' ? "text-orange-500" : ""} /> 판매 요약
                 </button>
-                <button onClick={() => setSummaryTab('settlement')} className={`px-5 py-2.5 rounded-t-xl font-bold text-sm transition-colors flex items-center gap-2 ${summaryTab === 'settlement' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827] relative z-10' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}`}>
+                <button onClick={() => setSummaryTab('settlement')} className={`px-5 py-2.5 rounded-t-xl font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${summaryTab === 'settlement' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827] relative z-10' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}`}>
                   <Database size={16} className={summaryTab === 'settlement' ? "text-orange-500" : ""} /> 정산 현황
                 </button>
               </div>
@@ -955,8 +918,8 @@ export default function App() {
                   </div>
 
                   <div className="bg-gray-50 dark:bg-gray-800/30 px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0">
-                    <span className="text-sm font-bold text-gray-800 dark:text-gray-200">오늘 판매 상세 내역</span>
-                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <span className="text-sm font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">오늘 판매 상세 내역</span>
+                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm whitespace-nowrap">
                       <Calendar size={12} className="text-orange-500" />
                       <span>{formatDateWithDay(today)}</span>
                     </div>
@@ -1022,16 +985,16 @@ export default function App() {
                             return (
                               <tr key={sale.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 group transition-colors">
                                 <td className="px-5 py-3.5 whitespace-nowrap">
-                                  <div className="font-bold text-gray-900 dark:text-white">
+                                  <div className="font-bold leading-tight text-gray-900 dark:text-white">
                                     {sale.product}
                                   </div>
                                   <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 md:hidden">{sale.option}</div>
-                                  <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 md:hidden">{sale.note}</div>
+                                  <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 md:hidden truncate max-w-[150px]">{sale.note}</div>
                                 </td>
                                 <td className="px-5 py-3.5 hidden md:table-cell text-gray-600 dark:text-gray-400 whitespace-nowrap">{sale.option}</td>
                                 <td className="px-3 py-3.5 text-center font-bold text-gray-900 dark:text-gray-200 whitespace-nowrap">{sale.quantity}</td>
                                 <td className="px-3 py-3.5 text-right whitespace-nowrap">
-                                  <div className="font-black text-gray-900 dark:text-white">{sale.totalPrice.toLocaleString()}원</div>
+                                  <div className="font-black whitespace-nowrap text-gray-900 dark:text-white">{sale.totalPrice.toLocaleString()}원</div>
                                 </td>
                                 <td className="pl-6 pr-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden md:table-cell whitespace-nowrap" title={sale.note}>{sale.note}</td>
                                 <td className="px-3 py-3.5 text-center whitespace-nowrap">
@@ -1054,7 +1017,7 @@ export default function App() {
                 <div className="flex-1 p-5 md:p-6 bg-white dark:bg-gray-900 overflow-y-auto">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
                     <div>
-                      <h2 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2"><Database size={18} className="text-orange-500" /> 정산 및 시재 점검</h2>
+                      <h2 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2 whitespace-nowrap"><Database size={18} className="text-orange-500" /> 정산 및 시재 점검</h2>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">현재 실제 보유 자산을 입력하여 미정산금과의 오차를 확인하세요.</p>
                     </div>
                     <button 
@@ -1112,41 +1075,41 @@ export default function App() {
                       <div className="flex flex-col gap-3">
                         <div className="p-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
-                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm">
+                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm whitespace-nowrap">
                               <Clock size={16} className="text-gray-500 dark:text-gray-400 mr-2" /> 미정산금 <span className="font-normal text-xs text-gray-500 ml-1.5">(보관 중)</span>
                             </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block whitespace-nowrap">
                               누적 판매금({totalSales.toLocaleString()}원) - 송금액({remitted.toLocaleString()}원)
                             </span>
                           </div>
-                          <span className="font-black text-xl text-gray-900 dark:text-white text-right">
+                          <span className="font-black text-xl text-gray-900 dark:text-white text-right whitespace-nowrap">
                             {unsettledAmount.toLocaleString()} 원
                           </span>
                         </div>
 
                         <div className="p-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
                           <div>
-                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm">
+                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm whitespace-nowrap">
                               <Wallet size={16} className="text-gray-500 dark:text-gray-400 mr-2" /> 현재 보유 자산 <span className="font-normal text-xs text-gray-500 ml-1.5">(계좌+현금)</span>
                             </span>
                           </div>
-                          <span className="font-black text-xl text-gray-900 dark:text-white text-right">
+                          <span className="font-black text-xl text-gray-900 dark:text-white text-right whitespace-nowrap">
                             {totalAsset.toLocaleString()} 원
                           </span>
                         </div>
 
                         <div className={`p-5 rounded-xl border flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2 transition-colors ${tillDifference === 0 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50' : tillDifference > 0 ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/50'}`}>
                           <div>
-                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm">
+                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm whitespace-nowrap">
                               <Scale size={16} className={`mr-2 ${tillDifference === 0 ? 'text-emerald-500' : tillDifference > 0 ? 'text-blue-500' : 'text-red-500'}`} /> 최종 시재 (차액)
                             </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block whitespace-nowrap">
                               {tillDifference === 0 ? '정산 내역이 완벽히 일치합니다.' : 
                                tillDifference > 0 ? '보유 자산이 미정산금보다 많습니다.' : 
                                '보유 자산이 미정산금보다 부족합니다.'}
                             </span>
                           </div>
-                          <span className={`font-black text-2xl text-right ${tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : tillDifference > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
+                          <span className={`font-black text-2xl text-right whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : tillDifference > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
                             {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} <span className="text-base font-bold ml-0.5">원</span>
                           </span>
                         </div>
@@ -1163,7 +1126,7 @@ export default function App() {
           <div className="lg:col-span-4 flex flex-col gap-6">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden relative transition-colors">
                <div className="bg-gray-50 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex justify-between items-center shrink-0">
-                <div className="flex items-center gap-2"><Archive size={18} className="text-gray-500" /> 누적 판매 요약</div>
+                <div className="flex items-center gap-2 whitespace-nowrap"><Archive size={18} className="text-gray-500" /> 누적 판매 요약</div>
                 <button onClick={() => setMaximizedView('total')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="상세 내역 확대 보기"><Maximize2 size={16} /></button>
               </div>
                <div className="p-0 flex-1 overflow-y-auto overflow-x-auto min-h-0">
@@ -1177,7 +1140,7 @@ export default function App() {
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
                     {totalSalesSummary.list.length === 0 ? (
-                      <tr><td colSpan="3" className="text-center text-gray-400 dark:text-gray-500 py-16">판매 데이터가 없습니다.</td></tr>
+                      <tr><td colSpan="3" className="text-center text-gray-400 dark:text-gray-500 py-16 whitespace-nowrap">판매 데이터가 없습니다.</td></tr>
                     ) : (
                       totalSalesSummary.list.map((item, idx) => {
                         const percent = totalSalesSummary.totalQty > 0 ? Math.round((item.quantity / totalSalesSummary.totalQty) * 100) : 0;
@@ -1209,7 +1172,7 @@ export default function App() {
           <div className="lg:col-span-8">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col relative transition-colors">
               <div className="bg-gray-50 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex justify-between items-center shrink-0">
-                <div className="flex items-center gap-2"><Box size={18} className="text-orange-500" /> 실시간 재고 현황</div>
+                <div className="flex items-center gap-2 whitespace-nowrap"><Box size={18} className="text-orange-500" /> 실시간 재고 현황</div>
                 <button onClick={() => setMaximizedView('inventory')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="재고 관리 확대 보기"><Maximize2 size={16} /></button>
               </div>
               <div className="flex-1 overflow-x-auto min-h-0 relative">
@@ -1228,7 +1191,7 @@ export default function App() {
                         <td colSpan="4" className="py-24">
                           <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
                             <Box size={48} className="text-gray-200 dark:text-gray-700 mb-4" strokeWidth={1.5} />
-                            <span className="text-base font-medium">등록된 재고가 없습니다.</span>
+                            <span className="text-base font-medium whitespace-nowrap">등록된 재고가 없습니다.</span>
                           </div>
                         </td>
                       </tr>
@@ -1316,7 +1279,7 @@ export default function App() {
                       </div>
                       
                       <div className="flex items-center gap-2 ml-auto w-full sm:w-auto justify-end">
-                        <button onClick={() => exportToCSV(processedInventory, 'inventory')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700 shrink-0">
+                        <button onClick={() => exportToCSV(processedInventory, 'inventory')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700 shrink-0 whitespace-nowrap">
                           <Download size={14} /> <span>CSV 내보내기</span>
                         </button>
                         
@@ -1468,35 +1431,6 @@ export default function App() {
                   </>
                 )}
 
-                {invTab === 'stock' && pendingRawData.length > 0 && (
-                  <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-900">
-                    <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-sm shrink-0 gap-3">
-                      <div>
-                        <h3 className="text-sm sm:text-lg font-black text-gray-900 dark:text-white flex items-center gap-1.5 sm:gap-2"><AlertCircle size={16} className="text-orange-500 sm:w-[18px] sm:h-[18px]" /> 인식된 데이터 ({pendingRawData.length}건)<span className="text-[10px] sm:text-sm bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2 sm:px-2.5 py-0.5 rounded-full ml-1.5 sm:ml-2 font-bold">총: {pendingRawData.reduce((a, c) => a + c.qty, 0)}개</span></h3>
-                      </div>
-                      <div className="flex gap-2 w-full sm:w-auto"><button onClick={() => setPendingRawData([])} className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-xs sm:text-sm font-bold transition-colors whitespace-nowrap">취소</button><button onClick={applyPendingData} className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white hover:bg-black dark:hover:bg-gray-600 rounded-lg text-xs sm:text-sm font-bold shadow-sm transition-colors whitespace-nowrap">매칭 저장 및 반영</button></div>
-                    </div>
-                    <div className="flex-1 overflow-x-auto overflow-y-auto">
-                      <table className="w-full text-sm text-left min-w-[600px] sm:min-w-[700px]">
-                        <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 text-[11px] sm:text-xs border-b border-gray-100 dark:border-gray-800">
-                          <tr><th className="px-4 sm:px-5 py-3 sm:py-3.5 w-[30%] sm:w-1/3 font-semibold whitespace-nowrap">Raw Data</th><th className="px-2 sm:px-5 py-3 sm:py-3.5 text-right font-semibold whitespace-nowrap">수량</th><th className="px-3 sm:px-5 py-3 sm:py-3.5 font-semibold whitespace-nowrap">매칭 상품</th><th className="px-3 sm:px-5 py-3 sm:py-3.5 font-semibold whitespace-nowrap">매칭 옵션</th><th className="px-3 sm:px-5 py-3 sm:py-3.5 text-right font-semibold whitespace-nowrap">판매 금액(원)</th></tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
-                          {pendingRawData.map((item, idx) => (
-                            <tr key={idx} className={item.mapped ? "bg-gray-50/50 dark:bg-gray-800/30" : "bg-red-50/50 dark:bg-red-900/10"}>
-                              <td className="px-4 sm:px-5 py-2 sm:py-3 text-[10px] sm:text-xs whitespace-nowrap"><div className="font-mono text-gray-500 dark:text-gray-400">{item.rawId}</div><div className="font-bold text-gray-900 dark:text-white mt-0.5">{item.rawName.split(',')[0]}</div></td>
-                              <td className="px-2 sm:px-5 py-2 sm:py-3 text-right font-black text-gray-900 dark:text-white text-sm sm:text-base whitespace-nowrap">{item.qty}</td>
-                              <td className="px-3 sm:px-5 py-2 sm:py-3 whitespace-nowrap"><input list="globalProductList" value={item.mapTo.product} onChange={(e) => updatePendingMap(idx, 'product', e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
-                              <td className="px-3 sm:px-5 py-2 sm:py-3 whitespace-nowrap"><input list="globalOptionList" value={item.mapTo.option} onChange={(e) => updatePendingMap(idx, 'option', e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 py-1 sm:py-1.5 text-[11px] sm:text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
-                              <td className="px-3 sm:px-5 py-2 sm:py-3 text-right whitespace-nowrap"><input type="text" inputMode="numeric" pattern="[0-9]*" value={item.mapTo.sellPrice || ''} onChange={(e) => updatePendingMap(idx, 'sellPrice', e.target.value.replace(/[^0-9]/g, ''))} className="w-16 sm:w-24 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 py-1 sm:py-1.5 text-[11px] sm:text-xs text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" /></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
                 {invTab === 'mapping' && (
                   <div className="flex-1 overflow-x-auto overflow-y-auto bg-white dark:bg-gray-900 relative">
                     <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 shadow-sm shrink-0">
@@ -1612,12 +1546,11 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                    {(searchProduct || searchOption || startDate) && <button onClick={() => { setSearchProduct(''); setSearchOption(''); setStartDate(''); setEndDate(''); }} className="text-[11px] sm:text-xs text-gray-400 hover:text-gray-800 dark:hover:text-white underline font-bold whitespace-nowrap shrink-0">초기화</button>}
+                    {(searchProduct || searchOption || startDate) && <button onClick={() => { setSearchProduct(''); setSearchOption(''); setStartDate(''); setEndDate(''); }} className="text-[11px] sm:text-xs text-gray-400 hover:text-gray-800 dark:hover:text-white underline font-bold whitespace-nowrap">초기화</button>}
                   </div>
                   
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                     {/* 모바일 환경에서는 내보내기 버튼 숨김 (hidden sm:flex) */}
-                     <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700 shrink-0">
+                     <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700">
                        <Download size={14} /> <span>CSV 내보내기</span>
                      </button>
                   </div>
@@ -1743,7 +1676,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 💡 전역 Toast 알림 컨테이너 렌더링 */}
       {renderToastContainer()}
     </div>
   );
