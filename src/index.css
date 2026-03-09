@@ -1,4 +1,11 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 💡 시스템 다크/라이트 모드 설정에 따라 스크롤바 색상 자동 변경 */
+:root {
+  color-scheme: light dark;
+}
 
 body {
   margin: 0;
