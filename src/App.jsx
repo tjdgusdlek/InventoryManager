@@ -317,7 +317,7 @@ export default function App() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
-  const [formData, setFormData] = useState({ date: today, product: '', option: '', quantity: 1, price: 0, note: '' });
+  const [formData, setFormData] = useState({ date: today, product: '', option: '', quantity: 1, price: 0, unitPrice: 0, note: '' });
 
   const uniqueProducts = useMemo(() => [...new Set(inventoryData.map(item => item.product))], [inventoryData]);
   const uniqueOptionsAll = useMemo(() => [...new Set(inventoryData.map(item => item.option))], [inventoryData]);
@@ -329,10 +329,16 @@ export default function App() {
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     if (name === 'product') {
-      setFormData(prev => ({ ...prev, product: value, option: '', price: 0 }));
+      setFormData(prev => ({ ...prev, product: value, option: '', price: 0, unitPrice: 0 }));
     } else if (name === 'option') {
       const selectedItem = availableOptions.find(opt => opt.option === value);
-      setFormData(prev => ({ ...prev, option: value, price: selectedItem ? selectedItem.sellPrice : 0 }));
+      const unitPrice = selectedItem ? selectedItem.sellPrice : 0;
+      // 옵션 선택 시 기본 단가 저장 및 (단가 * 현재수량)으로 금액 세팅
+      setFormData(prev => ({ ...prev, option: value, unitPrice, price: unitPrice * prev.quantity }));
+    } else if (name === 'quantity') {
+      const qty = Number(value) || 0;
+      // 수량 변경 시 (기본 단가 * 변경된 수량)으로 판매 금액 자동 업데이트
+      setFormData(prev => ({ ...prev, quantity: value, price: prev.unitPrice * qty }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -348,8 +354,9 @@ export default function App() {
       product: formData.product,
       option: formData.option,
       quantity: Number(formData.quantity),
-      price: Number(formData.price),
-      totalPrice: Number(formData.quantity) * Number(formData.price),
+      // 입력한 '판매 금액'이 그대로 총액(totalPrice)이 되도록 수정
+      price: Math.round(Number(formData.price) / Number(formData.quantity)), // 개당 단가 역산
+      totalPrice: Number(formData.price),
       note: formData.note
     };
 
@@ -359,7 +366,8 @@ export default function App() {
     }
     
     setSales([newSale, ...sales]);
-    setFormData({ date: formData.date, product: '', option: '', quantity: 1, price: 0, note: '' });
+    // 폼 초기화 시 unitPrice도 0으로 초기화
+    setFormData({ date: formData.date, product: '', option: '', quantity: 1, price: 0, unitPrice: 0, note: '' });
   };
 
   const handleDeleteSale = async (id) => {
