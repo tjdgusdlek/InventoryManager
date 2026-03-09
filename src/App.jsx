@@ -1333,13 +1333,13 @@ export default function App() {
                           <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
                             <input type="radio" name="addMode" value="manual" checked={addMode === 'manual'} onChange={() => setAddMode('manual')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
                             <PenTool size={16} className={addMode === 'manual' ? "text-orange-500" : "text-gray-400"} />
-                            <span className={addMode === 'manual' ? "text-orange-500" : ""}>하나씩 직접 입력</span>
+                            <span className={addMode === 'manual' ? "text-orange-500" : ""}>직접 입력</span>
                           </label>
                           {/* 💡 모바일에서는 일괄 붙여넣기 옵션을 아예 숨김 */}
                           <label className="hidden sm:flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
                             <input type="radio" name="addMode" value="bulk" checked={addMode === 'bulk'} onChange={() => setAddMode('bulk')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
                             <ClipboardList size={16} className={addMode === 'bulk' ? "text-orange-500" : "text-gray-400"} />
-                            <span className={addMode === 'bulk' ? "text-orange-500" : ""}>표 복사해서 일괄 추가</span>
+                            <span className={addMode === 'bulk' ? "text-orange-500" : ""}>일괄 추가</span>
                           </label>
                         </div>
 
