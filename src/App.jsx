@@ -275,6 +275,9 @@ export default function App() {
   // --- 커스텀 확인 모달 상태 ---
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
 
+  // 💡 과거 데이터(재고 차감 제외) 옵션 상태 추가
+  const [isNoDeduct, setIsNoDeduct] = useState(false);
+
   // 송금 내역 관련 상태
   const [remittanceHistory, setRemittanceHistory] = useState([]);
   const [showRemittanceModal, setShowRemittanceModal] = useState(false);
@@ -430,6 +433,12 @@ export default function App() {
     e.preventDefault();
     if (!formData.product || !formData.option || formData.quantity <= 0) return showToast("상품, 옵션, 수량을 정확히 입력해주세요.", "error");
 
+    // 💡 과거 기록 옵션이 켜져있으면 비고란에 몰래 숨김 태그를 붙입니다.
+    let finalNote = formData.note || '';
+    if (isNoDeduct) {
+      finalNote = finalNote ? finalNote + ' [재고차감X]' : '[재고차감X]';
+    }
+
     const newSale = {
       id: Date.now() + Math.floor(Math.random() * 10000), 
       date: formData.date,
@@ -438,7 +447,7 @@ export default function App() {
       quantity: Number(formData.quantity),
       price: Math.round(Number(formData.price) / Number(formData.quantity)), 
       totalPrice: Number(formData.price), 
-      note: formData.note
+      note: finalNote
     };
 
     if (supabaseClient) {
@@ -447,11 +456,11 @@ export default function App() {
     }
     
     setSales([newSale, ...sales]);
-    showToast("판매 내역이 등록되었습니다.", "success");
+    showToast(isNoDeduct ? "과거 내역이 등록되었습니다. (재고유지)" : "판매 내역이 등록되었습니다.", "success");
     setFormData({ date: formData.date, product: '', option: '', quantity: 1, price: 0, unitPrice: 0, note: '' });
   };
 
-  // 💡 엑셀 일괄 추가 파싱 로직
+  // 💡 엑셀 일괄 추가 파싱 로직 (확인 단계 추가)
   const handleParseBulkSales = async () => {
     if (!bulkSalesInput.trim()) return showToast("데이터를 입력해주세요.", "error");
     
@@ -460,23 +469,24 @@ export default function App() {
     let errorCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
-      // 첫 줄이 헤더일 경우 스킵 (판매일 또는 상품명이라는 글자가 포함된 경우)
       if (i === 0 && (lines[i].includes('판매일') || lines[i].includes('상품명') || lines[i].includes('수량'))) continue;
 
       const parts = lines[i].split('\t').map(p => p.trim());
-      // 탭(Excel 복사 기본)으로 안 나뉘면 콤마(CSV)로 시도
       const row = parts.length > 1 ? parts : lines[i].split(',').map(p => p.trim());
 
-      // 최소한 날짜, 상품, 옵션, 수량, 판매금액 (5개) 열이 있어야 함
       if (row.length >= 5) {
         const date = row[0];
         const product = row[1];
         const option = row[2];
         const quantity = parseInt(row[3].replace(/,/g, ''), 10) || 0;
         const totalPrice = parseInt(row[4].replace(/,/g, ''), 10) || 0;
-        const note = row[5] || '';
+        
+        // 💡 엑셀 비고 내용에 숨김 태그 추가
+        let note = row[5] || '';
+        if (isNoDeduct) {
+          note = note ? note + ' [재고차감X]' : '[재고차감X]';
+        }
 
-        // 필수 데이터 유효성 검사 (YYYY-MM-DD 형식 검사 포함)
         if (date && date.includes('-') && product && option && quantity > 0) {
            newSales.push({
              id: Date.now() + Math.floor(Math.random() * 10000) + i,
@@ -498,16 +508,42 @@ export default function App() {
 
     if (newSales.length === 0) return showToast("인식할 수 있는 데이터가 없습니다. 열 순서를 확인해주세요.", "error");
 
-    if (supabaseClient) {
-      const { error } = await supabaseClient.from('sales').insert(newSales);
-      if (error) return showToast("DB 일괄 저장 중 오류가 발생했습니다.", "error");
-    }
+    // 💡 이모티콘(📦, ⚠️)을 제거하고, 세련된 레이아웃과 Lucide 아이콘을 사용하도록 메시지 구성
+    const confirmMessage = (
+      <div className="flex flex-col gap-3 mt-1">
+        <span className="text-gray-800 dark:text-gray-200">총 <strong>{newSales.length}</strong>건의 판매 내역을 일괄 등록하시겠습니까?</span>
+        {errorCount > 0 && <span className="text-red-500 text-xs font-bold">(데이터 인식 실패: {errorCount}건)</span>}
+        
+        <div className={`p-3 rounded-lg border flex gap-2 items-start ${isNoDeduct ? 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-300' : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-400'}`}>
+          {isNoDeduct ? <Archive size={16} className="shrink-0 mt-0.5" /> : <AlertCircle size={16} className="shrink-0 mt-0.5" />}
+          <div className="text-[11px] sm:text-xs leading-relaxed break-keep">
+            <strong className="block mb-0.5">{isNoDeduct ? '[과거 기록용]' : '[일반 등록]'}</strong>
+            {isNoDeduct ? '현재 보유 중인 재고에서 수량을 차감하지 않습니다.' : '등록 즉시 현재 보유 중인 재고에서 수량이 차감됩니다!'}
+          </div>
+        </div>
+      </div>
+    );
 
-    // 기존 데이터와 합치고 날짜순 정렬
-    setSales(prev => [...newSales, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
-    setBulkSalesInput('');
-    setSalesAddMode('manual');
-    showToast(`${newSales.length}건의 판매 내역이 등록되었습니다.${errorCount > 0 ? ` (인식 실패: ${errorCount}건)` : ''}`, "success");
+    setConfirmDialog({
+      isOpen: true,
+      message: confirmMessage,
+      onConfirm: async () => {
+        if (supabaseClient) {
+          const { error } = await supabaseClient.from('sales').insert(newSales);
+          if (error) {
+            showToast("DB 일괄 저장 중 오류가 발생했습니다.", "error");
+            setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+            return;
+          }
+        }
+
+        setSales(prev => [...newSales, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
+        setBulkSalesInput('');
+        setSalesAddMode('manual');
+        showToast(`${newSales.length}건이 등록되었습니다.${isNoDeduct ? ' (재고유지)' : ''}`, "success");
+        setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
   };
 
   const handleDeleteSale = async (id) => {
@@ -792,10 +828,37 @@ export default function App() {
     });
   };
 
+  // 💡 엑셀 일괄 삭제 함수 추가 (검색된 결과만 모두 삭제)
+  const handleBulkDeleteSales = async () => {
+    if (modalDetailedData.length === 0) return showToast("삭제할 데이터가 없습니다.", "error");
+    
+    setConfirmDialog({
+      isOpen: true,
+      message: `현재 화면에 검색/조회된 ${modalDetailedData.length}건의 판매 내역을 모두 삭제하시겠습니까?\n(이 작업은 되돌릴 수 없습니다!)`,
+      onConfirm: async () => {
+        const idsToDelete = modalDetailedData.map(s => s.id);
+        
+        if (supabaseClient) {
+          const { error } = await supabaseClient.from('sales').delete().in('id', idsToDelete);
+          if (error) {
+            showToast("DB 일괄 삭제 중 오류가 발생했습니다.", "error");
+            setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+            return;
+          }
+        }
+        
+        setSales(prev => prev.filter(sale => !idsToDelete.includes(sale.id)));
+        showToast(`${idsToDelete.length}건이 일괄 삭제되었습니다.`, "success");
+        setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
+  };
+
   const currentInventory = useMemo(() => {
     const calculated = inventoryData.map(item => {
       const soldQty = sales
-        .filter(sale => sale.product === item.product && sale.option === item.option)
+        // 💡 [재고차감X] 태그가 없는 판매 내역만 추려서 차감합니다.
+        .filter(sale => sale.product === item.product && sale.option === item.option && !(sale.note || '').includes('[재고차감X]'))
         .reduce((sum, sale) => sum + sale.quantity, 0);
       return { ...item, soldQty, remainQty: item.qty - soldQty };
     });
@@ -1095,7 +1158,6 @@ export default function App() {
                   <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
                     <input type="radio" name="salesAddMode" value="bulk" checked={salesAddMode === 'bulk'} onChange={() => setSalesAddMode('bulk')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
                     <ClipboardList size={16} className={salesAddMode === 'bulk' ? "text-orange-500" : "text-gray-400"} />
-                    {/* 💡 텍스트를 '엑셀 일괄 추가'에서 '일괄 추가'로 심플하게 변경했습니다. */}
                     <span className={salesAddMode === 'bulk' ? "text-orange-500 whitespace-nowrap" : "whitespace-nowrap"}>일괄 추가</span>
                   </label>
                 </div>
@@ -1104,6 +1166,7 @@ export default function App() {
               {salesAddMode === 'manual' ? (
                 <form onSubmit={handleAddSale} className="p-5 flex flex-col gap-5 flex-1">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 💡 사라졌던 날짜, 상품, 수량 등의 입력 칸 완벽 복구! */}
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">판매일</label>
                       <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 pr-1.5 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 shadow-sm">
@@ -1148,9 +1211,18 @@ export default function App() {
                         </div>
                       </div>
                     </div>
+
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">비고 (선택)</label>
                       <input type="text" name="note" value={formData.note} onChange={handleFormChange} className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" placeholder="입금 방식 등..." />
+                    </div>
+                    {/* 💡 과거 기록용 체크박스 디자인 은은하게 변경 (이모티콘 -> Archive 아이콘) */}
+                    <div className="md:col-span-2 mt-1">
+                      <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
+                        <input type="checkbox" checked={isNoDeduct} onChange={e => setIsNoDeduct(e.target.checked)} className="w-3.5 h-3.5 text-orange-500 rounded border-gray-300 focus:ring-orange-500 cursor-pointer" />
+                        <Archive size={14} />
+                        과거 기록용 (체크 시 현재 재고에서 차감하지 않습니다)
+                      </label>
                     </div>
                   </div>
                   <div className="mt-auto pt-2">
@@ -1161,9 +1233,16 @@ export default function App() {
                 </form>
               ) : (
                 <div className="p-5 flex flex-col gap-4 flex-1">
-                   <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-100 dark:border-orange-800 text-[11px] sm:text-xs text-orange-800 dark:text-orange-300 mb-2 leading-relaxed">
-                      엑셀에서 <strong>[판매일, 상품명, 옵션명, 수량, 판매금액, 비고]</strong> 순서대로 표를 복사한 후 아래에 붙여넣으세요. (첫 줄 제목 열 포함 가능)
+                   {/* 💡 break-keep 추가 및 괄호 부분 inline-block 처리로 깔끔한 줄바꿈 보장 */}
+                   <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-100 dark:border-orange-800 text-[11px] sm:text-xs text-orange-800 dark:text-orange-300 mb-1 leading-relaxed break-keep">
+                      엑셀에서 <strong>[판매일, 상품명, 옵션명, 수량, 판매금액, 비고]</strong> 순서대로 표를 복사한 후 아래에 붙여넣으세요. <span className="inline-block text-orange-700/80 dark:text-orange-300/80 mt-0.5 sm:mt-0">(첫 줄 제목 열 포함 가능)</span>
                    </div>
+                   {/* 💡 체크박스 부분도 깔끔하게 줄바꿈되도록 수정 */}
+                   <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors mb-1 break-keep">
+                      <input type="checkbox" checked={isNoDeduct} onChange={e => setIsNoDeduct(e.target.checked)} className="w-3.5 h-3.5 text-orange-500 rounded border-gray-300 focus:ring-orange-500 cursor-pointer shrink-0" />
+                      <Archive size={14} className="shrink-0" />
+                      <span>과거 기록용 데이터 <span className="text-[10px] sm:text-[11px] opacity-80 inline-block">(체크 시 재고 차감 안 함)</span></span>
+                   </label>
                    <textarea
                       value={bulkSalesInput}
                       onChange={e => setBulkSalesInput(e.target.value)}
@@ -1296,14 +1375,22 @@ export default function App() {
                                     {sale.product}
                                   </div>
                                   <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden truncate">{sale.option}</div>
-                                  <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate">{sale.note}</div>
+                                  <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate">
+                                    {/* 💡 모바일 뷰 뱃지 표시 및 태그 숨김 */}
+                                    {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1 py-0.5 rounded mr-1 font-bold">재고유지</span>}
+                                    {sale.note?.replace('[재고차감X]', '').trim()}
+                                  </div>
                                 </td>
                                 <td className="px-3 py-3.5 hidden sm:table-cell text-gray-600 dark:text-gray-400 truncate">{sale.option}</td>
                                 <td className="px-2 py-3.5 text-center font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200 truncate">{Number(sale.quantity).toLocaleString()}</td>
                                 <td className="px-2 py-3.5 text-right">
                                   <div className="font-black text-gray-900 dark:text-white truncate">{Number(sale.totalPrice).toLocaleString()}원</div>
                                 </td>
-                                <td className="px-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell truncate" title={sale.note}>{sale.note || '-'}</td>
+                                <td className="px-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell truncate" title={sale.note}>
+                                  {/* 💡 PC 뷰 뱃지 표시 및 태그 숨김 */}
+                                  {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] px-1.5 py-0.5 rounded mr-1 font-bold whitespace-nowrap">재고유지</span>}
+                                  {sale.note?.replace('[재고차감X]', '').trim() || '-'}
+                                </td>
                                 <td className="px-2 pr-3 sm:pr-5 py-3.5 text-center">
                                   <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => startEdit(sale)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={16}/></button>
@@ -1940,9 +2027,13 @@ export default function App() {
                     {(searchProduct || searchOption || startDate) && <button onClick={() => { setSearchProduct(''); setSearchOption(''); setStartDate(''); setEndDate(''); }} className="text-[11px] sm:text-xs text-gray-400 hover:text-gray-800 dark:hover:text-white underline font-bold whitespace-nowrap">초기화</button>}
                   </div>
                   
-                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                     <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700 truncate">
-                       <Download size={14} /> <span>CSV 내보내기</span>
+                  {/* 💡 모달창 버튼 그룹에 '조회된 전체 삭제' 버튼 추가 */}
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
+                     <button onClick={handleBulkDeleteSales} className="flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 shadow-sm border border-red-200 dark:border-red-800 shrink-0">
+                       <Trash2 size={14} /> <span className="hidden sm:inline">조회된 전체 삭제</span><span className="sm:hidden">일괄 삭제</span>
+                     </button>
+                     <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700 shrink-0">
+                       <Download size={14} /> <span className="hidden sm:inline">CSV 내보내기</span><span className="sm:hidden">CSV</span>
                      </button>
                   </div>
                 </div>
@@ -1967,28 +2058,28 @@ export default function App() {
                         modalDetailedData.map((sale) => {
                           if (editingSaleId === sale.id) {
                             return (
-                              <tr key={sale.id} className="bg-orange-50/50 dark:bg-orange-900/10">
-                                <td className="px-2 sm:px-4 py-2 hidden sm:table-cell align-top"><div className="flex flex-col gap-1 w-full"><div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500"><CustomDatePicker startDate={editForm.date} onChange={(start) => setEditForm({...editForm, date: start})} wrapperClassName="w-full" className="w-full pl-2 py-1.5 text-xs bg-transparent outline-none truncate font-bold text-gray-900 dark:text-white" isRangeMode={false} /></div></div></td>
-                                <td className="px-2 sm:px-3 py-2 align-top">
-                                  <div className="flex flex-col gap-1 w-full">
-                                    <input type="text" value={editForm.product} onChange={e => setEditForm({...editForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
-                                    <input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden" placeholder="옵션명" />
-                                    <input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden" placeholder="비고" />
+                              <tr key={sale.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 group transition-colors">
+                                <td className="px-2 sm:px-4 py-2.5 sm:py-3.5 text-gray-500 dark:text-gray-400 font-medium text-[11px] sm:text-xs hidden sm:table-cell truncate">{sale.date}</td>
+                                <td className="px-2 sm:px-3 py-2.5 sm:py-3.5">
+                                  <div className="font-bold text-[11px] sm:text-sm text-gray-900 dark:text-white truncate">
+                                    {sale.product}
+                                  </div>
+                                  <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden truncate"><span className="text-orange-500 font-bold">{sale.date.substring(5)}</span> | {sale.option}</div>
+                                  <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate">
+                                    {/* 💡 모바일 뷰 뱃지 표시 및 태그 숨김 */}
+                                    {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1 py-0.5 rounded mr-1 font-bold">재고유지</span>}
+                                    {sale.note?.replace('[재고차감X]', '').trim()}
                                   </div>
                                 </td>
-                                <td className="px-3 py-2 hidden sm:table-cell align-top">
-                                  <div className="flex flex-col gap-1 w-full">
-                                    <input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" />
-                                  </div>
+                                <td className="px-3 py-3.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell truncate">{sale.option}</td>
+                                <td className="px-1 py-2.5 sm:py-3.5 text-center font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200 truncate">{Number(sale.quantity).toLocaleString()}</td>
+                                <td className="px-1 sm:px-2 py-2.5 sm:py-3.5 text-right font-black text-[11px] sm:text-sm text-gray-900 dark:text-white truncate">{Number(sale.totalPrice).toLocaleString()}원</td>
+                                <td className="px-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell truncate" title={sale.note}>
+                                  {/* 💡 PC 뷰 뱃지 표시 및 태그 숨김 */}
+                                  {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] px-1.5 py-0.5 rounded mr-1 font-bold whitespace-nowrap">재고유지</span>}
+                                  {sale.note?.replace('[재고차감X]', '').trim() || '-'}
                                 </td>
-                                <td className="px-1 py-2 text-center align-top">
-                                  <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
-                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
-                                     <FormattedNumberInput value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: Number(val)}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" required={true} />
-                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
-                                  </div>
-                                </td>
-                                <td className="px-1 sm:px-2 py-2 text-right align-top">
+                                <td className="px-1 pr-3 sm:pr-5 py-2.5 sm:py-3.5 text-center whitespace-nowrap">
                                   <div className="flex flex-col gap-1 w-full">
                                     <FormattedNumberInput value={editForm.price} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(val)}); }} className="w-full h-8 ml-auto border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" required={true} />
                                   </div>
@@ -2196,10 +2287,13 @@ export default function App() {
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 transform scale-100 transition-all">
-            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-              <AlertCircle className="text-red-500" size={20} /> 삭제 확인
+            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <AlertCircle className="text-red-500" size={20} /> 확인
             </h3>
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-6">{confirmDialog.message}</p>
+            {/* 💡 p 태그를 div로 변경하여 내부에 JSX가 렌더링될 수 있도록 수정, 줄바꿈 개선 */}
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-6 whitespace-pre-wrap leading-relaxed">
+              {confirmDialog.message}
+            </div>
             <div className="flex justify-end gap-2">
               <button 
                 onClick={() => setConfirmDialog({ isOpen: false, message: '', onConfirm: null })} 
@@ -2211,7 +2305,7 @@ export default function App() {
                 onClick={confirmDialog.onConfirm} 
                 className="px-4 py-2 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors shadow-sm"
               >
-                삭제
+                확인
               </button>
             </div>
           </div>
