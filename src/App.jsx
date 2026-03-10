@@ -282,6 +282,10 @@ export default function App() {
   const [editingRemitId, setEditingRemitId] = useState(null);
   const [remitEditForm, setRemitEditForm] = useState(null);
 
+  // --- 판매 내역 등록 모드 상태 (수동 vs 엑셀) ---
+  const [salesAddMode, setSalesAddMode] = useState('manual');
+  const [bulkSalesInput, setBulkSalesInput] = useState('');
+
   useEffect(() => {
     if (!supabaseUrl || !supabaseKey) return;
     const initSupabase = () => {
@@ -445,6 +449,65 @@ export default function App() {
     setSales([newSale, ...sales]);
     showToast("판매 내역이 등록되었습니다.", "success");
     setFormData({ date: formData.date, product: '', option: '', quantity: 1, price: 0, unitPrice: 0, note: '' });
+  };
+
+  // 💡 엑셀 일괄 추가 파싱 로직
+  const handleParseBulkSales = async () => {
+    if (!bulkSalesInput.trim()) return showToast("데이터를 입력해주세요.", "error");
+    
+    const lines = bulkSalesInput.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    const newSales = [];
+    let errorCount = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      // 첫 줄이 헤더일 경우 스킵 (판매일 또는 상품명이라는 글자가 포함된 경우)
+      if (i === 0 && (lines[i].includes('판매일') || lines[i].includes('상품명') || lines[i].includes('수량'))) continue;
+
+      const parts = lines[i].split('\t').map(p => p.trim());
+      // 탭(Excel 복사 기본)으로 안 나뉘면 콤마(CSV)로 시도
+      const row = parts.length > 1 ? parts : lines[i].split(',').map(p => p.trim());
+
+      // 최소한 날짜, 상품, 옵션, 수량, 판매금액 (5개) 열이 있어야 함
+      if (row.length >= 5) {
+        const date = row[0];
+        const product = row[1];
+        const option = row[2];
+        const quantity = parseInt(row[3].replace(/,/g, ''), 10) || 0;
+        const totalPrice = parseInt(row[4].replace(/,/g, ''), 10) || 0;
+        const note = row[5] || '';
+
+        // 필수 데이터 유효성 검사 (YYYY-MM-DD 형식 검사 포함)
+        if (date && date.includes('-') && product && option && quantity > 0) {
+           newSales.push({
+             id: Date.now() + Math.floor(Math.random() * 10000) + i,
+             date,
+             product,
+             option,
+             quantity,
+             price: Math.round(totalPrice / quantity),
+             totalPrice,
+             note
+           });
+        } else {
+          errorCount++;
+        }
+      } else {
+        errorCount++;
+      }
+    }
+
+    if (newSales.length === 0) return showToast("인식할 수 있는 데이터가 없습니다. 열 순서를 확인해주세요.", "error");
+
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from('sales').insert(newSales);
+      if (error) return showToast("DB 일괄 저장 중 오류가 발생했습니다.", "error");
+    }
+
+    // 기존 데이터와 합치고 날짜순 정렬
+    setSales(prev => [...newSales, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
+    setBulkSalesInput('');
+    setSalesAddMode('manual');
+    showToast(`${newSales.length}건의 판매 내역이 등록되었습니다.${errorCount > 0 ? ` (인식 실패: ${errorCount}건)` : ''}`, "success");
   };
 
   const handleDeleteSale = async (id) => {
@@ -1018,69 +1081,102 @@ export default function App() {
 
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* --- 새 판매 등록 --- */}
+          {/* --- 새 판매 등록 (엑셀 일괄 추가 통합) --- */}
           <div className="lg:col-span-4">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col transition-colors">
-              <div className="bg-gray-50/80 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex items-center gap-2 shrink-0">
-                <Plus size={18} className="text-orange-500" /> 새 판매 등록
+              <div className="bg-gray-50/80 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex flex-col gap-3 shrink-0">
+                <div className="flex items-center gap-2"><Plus size={18} className="text-orange-500" /> 새 판매 등록</div>
+                <div className="flex gap-4 sm:gap-6 mt-1">
+                  <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
+                    <input type="radio" name="salesAddMode" value="manual" checked={salesAddMode === 'manual'} onChange={() => setSalesAddMode('manual')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
+                    <PenTool size={16} className={salesAddMode === 'manual' ? "text-orange-500" : "text-gray-400"} />
+                    <span className={salesAddMode === 'manual' ? "text-orange-500 whitespace-nowrap" : "whitespace-nowrap"}>직접 입력</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer font-bold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-orange-500 transition-colors">
+                    <input type="radio" name="salesAddMode" value="bulk" checked={salesAddMode === 'bulk'} onChange={() => setSalesAddMode('bulk')} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500 focus:ring-orange-500 cursor-pointer" />
+                    <ClipboardList size={16} className={salesAddMode === 'bulk' ? "text-orange-500" : "text-gray-400"} />
+                    {/* 💡 텍스트를 '엑셀 일괄 추가'에서 '일괄 추가'로 심플하게 변경했습니다. */}
+                    <span className={salesAddMode === 'bulk' ? "text-orange-500 whitespace-nowrap" : "whitespace-nowrap"}>일괄 추가</span>
+                  </label>
+                </div>
               </div>
-              <form onSubmit={handleAddSale} className="p-5 flex flex-col gap-5 flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">판매일</label>
-                    <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 pr-1.5 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 shadow-sm">
-                      <CustomDatePicker startDate={formData.date} onChange={(start) => setFormData(prev => ({ ...prev, date: start }))} wrapperClassName="flex-1" className="w-full px-3 py-2 text-sm bg-transparent font-bold dark:text-white whitespace-nowrap" isRangeMode={false} />
-                      <button type="button" onClick={() => setFormData(prev => ({ ...prev, date: today }))} className="shrink-0 px-2.5 py-1 text-xs rounded border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-bold bg-white dark:bg-gray-800 transition-colors whitespace-nowrap">오늘</button>
-                    </div>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">상품명</label>
-                    <select name="product" value={formData.product} onChange={handleFormChange} className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-sm font-medium focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" required>
-                      <option value="">상품 선택</option>
-                      {uniqueProducts.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">옵션명</label>
-                    <select name="option" value={formData.option} onChange={handleFormChange} disabled={!formData.product} className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-sm font-medium focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition shadow-sm disabled:bg-gray-50 dark:disabled:bg-gray-900/50 bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50" required>
-                      <option value="">옵션 선택</option>
-                      {availableOptions.map(opt => <option key={opt.id} value={opt.option}>{opt.option}</option>)}
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 md:col-span-2 md:grid-cols-2">
-                    <div>
-                      <label className="flex justify-between items-end text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">
-                        <span>판매 개수</span>
-                        {selectedRemainQty !== null && (
-                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${formData.quantity > selectedRemainQty ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'} whitespace-nowrap`}>
-                            잔여: {selectedRemainQty}개
-                          </span>
-                        )}
-                      </label>
-                      <div className={`flex items-center w-full border rounded-lg overflow-hidden transition-colors shadow-sm bg-white dark:bg-gray-800 ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'border-red-400 dark:border-red-600 focus-within:ring-1 focus-within:border-red-500 focus-within:ring-red-500' : 'border-gray-300 dark:border-gray-700 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500'}`}>
-                        <button type="button" onClick={() => { const q = Number(formData.quantity) || 0; if (q > 1) handleFormChange({ target: { name: 'quantity', value: q - 1 } }); }} className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-orange-500 dark:hover:text-orange-400 transition-colors border-r border-gray-200 dark:border-gray-700 focus:outline-none"><Minus size={14} strokeWidth={2.5} /></button>
-                        <FormattedNumberInput name="quantity" value={formData.quantity} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'quantity', value: Number(val) } }); }} className={`flex-1 w-full py-2.5 px-1 text-sm outline-none text-center font-black bg-transparent ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10' : 'text-gray-900 dark:text-white'}`} required={true} />
-                        <button type="button" onClick={() => { const q = Number(formData.quantity) || 0; handleFormChange({ target: { name: 'quantity', value: q + 1 } }); }} className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-orange-500 dark:hover:text-orange-400 transition-colors border-l border-gray-200 dark:border-gray-700 focus:outline-none"><Plus size={14} strokeWidth={2.5} /></button>
+
+              {salesAddMode === 'manual' ? (
+                <form onSubmit={handleAddSale} className="p-5 flex flex-col gap-5 flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">판매일</label>
+                      <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 pr-1.5 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 shadow-sm">
+                        <CustomDatePicker startDate={formData.date} onChange={(start) => setFormData(prev => ({ ...prev, date: start }))} wrapperClassName="flex-1" className="w-full px-3 py-2 text-sm bg-transparent font-bold dark:text-white whitespace-nowrap" isRangeMode={false} />
+                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, date: today }))} className="shrink-0 px-2.5 py-1 text-xs rounded border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-bold bg-white dark:bg-gray-800 transition-colors whitespace-nowrap">오늘</button>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">판매 금액 (원)</label>
-                      <div className="flex items-center w-full border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden transition-colors shadow-sm bg-white dark:bg-gray-800 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
-                        <FormattedNumberInput name="price" value={formData.price} onChange={(e) => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'price', value: Number(rawValue) } }); }} className="flex-1 w-full p-2.5 text-sm font-bold outline-none bg-transparent text-gray-900 dark:text-white text-right" placeholder="0" required={true} />
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">상품명</label>
+                      <select name="product" value={formData.product} onChange={handleFormChange} className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-sm font-medium focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" required>
+                        <option value="">상품 선택</option>
+                        {uniqueProducts.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">옵션명</label>
+                      <select name="option" value={formData.option} onChange={handleFormChange} disabled={!formData.product} className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-sm font-medium focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition shadow-sm disabled:bg-gray-50 dark:disabled:bg-gray-900/50 bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50" required>
+                        <option value="">옵션 선택</option>
+                        {availableOptions.map(opt => <option key={opt.id} value={opt.option}>{opt.option}</option>)}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 md:col-span-2 md:grid-cols-2">
+                      <div>
+                        <label className="flex justify-between items-end text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">
+                          <span>판매 개수</span>
+                          {selectedRemainQty !== null && (
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${formData.quantity > selectedRemainQty ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'} whitespace-nowrap`}>
+                              잔여: {selectedRemainQty}개
+                            </span>
+                          )}
+                        </label>
+                        <div className={`flex items-center w-full border rounded-lg overflow-hidden transition-colors shadow-sm bg-white dark:bg-gray-800 ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'border-red-400 dark:border-red-600 focus-within:ring-1 focus-within:border-red-500 focus-within:ring-red-500' : 'border-gray-300 dark:border-gray-700 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500'}`}>
+                          <button type="button" onClick={() => { const q = Number(formData.quantity) || 0; if (q > 1) handleFormChange({ target: { name: 'quantity', value: q - 1 } }); }} className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-orange-500 dark:hover:text-orange-400 transition-colors border-r border-gray-200 dark:border-gray-700 focus:outline-none"><Minus size={14} strokeWidth={2.5} /></button>
+                          <FormattedNumberInput name="quantity" value={formData.quantity} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'quantity', value: Number(val) } }); }} className={`flex-1 w-full py-2.5 px-1 text-sm outline-none text-center font-black bg-transparent ${selectedRemainQty !== null && formData.quantity > selectedRemainQty ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10' : 'text-gray-900 dark:text-white'}`} required={true} />
+                          <button type="button" onClick={() => { const q = Number(formData.quantity) || 0; handleFormChange({ target: { name: 'quantity', value: q + 1 } }); }} className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-orange-500 dark:hover:text-orange-400 transition-colors border-l border-gray-200 dark:border-gray-700 focus:outline-none"><Plus size={14} strokeWidth={2.5} /></button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">판매 금액 (원)</label>
+                        <div className="flex items-center w-full border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden transition-colors shadow-sm bg-white dark:bg-gray-800 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
+                          <FormattedNumberInput name="price" value={formData.price} onChange={(e) => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'price', value: Number(rawValue) } }); }} className="flex-1 w-full p-2.5 text-sm font-bold outline-none bg-transparent text-gray-900 dark:text-white text-right" placeholder="0" required={true} />
+                        </div>
                       </div>
                     </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">비고 (선택)</label>
+                      <input type="text" name="note" value={formData.note} onChange={handleFormChange} className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" placeholder="입금 방식 등..." />
+                    </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">비고 (선택)</label>
-                    <input type="text" name="note" value={formData.note} onChange={handleFormChange} className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" placeholder="입금 방식 등..." />
+                  <div className="mt-auto pt-2">
+                    <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md whitespace-nowrap">
+                      판매 내역 추가
+                    </button>
                   </div>
+                </form>
+              ) : (
+                <div className="p-5 flex flex-col gap-4 flex-1">
+                   <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-100 dark:border-orange-800 text-[11px] sm:text-xs text-orange-800 dark:text-orange-300 mb-2 leading-relaxed">
+                      엑셀에서 <strong>[판매일, 상품명, 옵션명, 수량, 판매금액, 비고]</strong> 순서대로 표를 복사한 후 아래에 붙여넣으세요. (첫 줄 제목 열 포함 가능)
+                   </div>
+                   <textarea
+                      value={bulkSalesInput}
+                      onChange={e => setBulkSalesInput(e.target.value)}
+                      placeholder="2024-03-20&#9;당근&#9;기본&#9;2&#9;10000&#9;입금완료"
+                      className="flex-1 w-full border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-xs sm:text-sm font-mono outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none min-h-[150px] sm:min-h-[200px]"
+                   />
+                   <div className="mt-auto pt-2">
+                     <button type="button" onClick={handleParseBulkSales} className="w-full bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md">
+                        <ClipboardList size={18} /> 데이터 일괄 등록
+                     </button>
+                   </div>
                 </div>
-                <div className="mt-auto pt-2">
-                  <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md whitespace-nowrap">
-                    판매 내역 추가
-                  </button>
-                </div>
-              </form>
+              )}
             </div>
           </div>
 
@@ -1322,7 +1418,6 @@ export default function App() {
                                 미정산금 <span className="font-medium text-xs text-gray-400 ml-2 hidden sm:inline">(보관 중인 판매대금)</span>
                               </span>
                             </div>
-                            {/* 💡 justify-between을 justify-end로 변경하여 모바일에서 항상 우측 정렬되도록 수정 */}
                             <div className="flex items-center justify-end gap-4 w-full sm:w-auto">
                               <span className="text-[11px] text-gray-400 hidden lg:inline">누적 판매({totalSales.toLocaleString()}) - 정산({remitted.toLocaleString()})</span>
                               <span className="font-bold text-lg text-gray-900 dark:text-white text-right tracking-tight">{unsettledAmount.toLocaleString()} 원</span>
@@ -1340,15 +1435,23 @@ export default function App() {
                           </div>
 
                           {/* 시재 (차액) */}
-                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-5 mt-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl gap-3 border border-gray-100 dark:border-gray-800/80">
+                          <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center p-5 mt-6 rounded-2xl gap-3 border transition-colors ${
+                            tillDifference === 0 
+                              ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50' 
+                              : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800/80'
+                          }`}>
                             <div>
-                              <span className="font-black text-gray-800 dark:text-gray-200 flex items-center text-base">
+                              <span className={`font-black flex items-center text-base ${tillDifference === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-800 dark:text-gray-200'}`}>
+                                {tillDifference === 0 && <CheckCircle2 size={18} className="mr-1.5" />}
                                 최종 시재 (차액)
                               </span>
                               <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 block">현재 보유 자산 - 미정산금</span>
                             </div>
-                            <span className={`font-black text-2xl md:text-3xl text-right tracking-tight ${tillDifference === 0 ? 'text-gray-900 dark:text-white' : tillDifference > 0 ? 'text-blue-500' : 'text-orange-500'}`}>
-                              {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} <span className="text-base font-bold text-gray-500 ml-0.5">원</span>
+                            <span className={`font-black text-2xl md:text-3xl text-right tracking-tight ${
+                              tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 
+                              tillDifference > 0 ? 'text-blue-500' : 'text-orange-500'
+                            }`}>
+                              {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} <span className={`text-base font-bold ml-0.5 ${tillDifference === 0 ? 'text-emerald-500 dark:text-emerald-500/70' : 'text-gray-500'}`}>원</span>
                             </span>
                           </div>
                         </div>
@@ -1879,10 +1982,10 @@ export default function App() {
                                   </div>
                                 </td>
                                 <td className="px-1 py-2 text-center align-top">
-                                  <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto border border-gray-300 dark:border-gray-600 rounded overflow-hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
-                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
-                                     <FormattedNumberInput value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: Number(val)}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-transparent outline-none" required={true} />
-                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
+                                  <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
+                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
+                                     <FormattedNumberInput value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: Number(val)}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" required={true} />
+                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
                                   </div>
                                 </td>
                                 <td className="px-1 sm:px-2 py-2 text-right align-top">
