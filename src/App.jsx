@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Minus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, RefreshCw, TrendingUp, Download, RotateCcw, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { Plus, Minus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, RefreshCw, TrendingUp, Download, RotateCcw, CheckCircle2, XCircle, Info, ChevronRight } from 'lucide-react';
 
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
@@ -189,7 +189,6 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
 };
 
 // 💡 1. 스마트 숫자 입력기 컴포넌트 추가 (중간 숫자 삭제 버그 방지)
-// onBlur 속성을 추가로 받아 포커스 아웃 이벤트를 상위로 전달합니다.
 const FormattedNumberInput = ({ value, onChange, onBlur, className, placeholder, name, required }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState('');
@@ -202,7 +201,7 @@ const FormattedNumberInput = ({ value, onChange, onBlur, className, placeholder,
 
   const handleBlur = (e) => {
     setIsFocused(false);
-    if (onBlur) onBlur(e); // 포커스가 빠질 때 상위 컴포넌트의 onBlur 실행
+    if (onBlur) onBlur(e);
   };
 
   const handleChange = (e) => {
@@ -273,6 +272,16 @@ export default function App() {
   const [settlementData, setSettlementData] = useState({ intermediate: 0, account: 0, cash: 0 });
   const [isSettlementSaving, setIsSettlementSaving] = useState(false);
 
+  // --- 커스텀 확인 모달 상태 ---
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
+
+  // 송금 내역 관련 상태
+  const [remittanceHistory, setRemittanceHistory] = useState([]);
+  const [showRemittanceModal, setShowRemittanceModal] = useState(false);
+  const [newRemittance, setNewRemittance] = useState({ date: '', amount: 0, note: '' });
+  const [editingRemitId, setEditingRemitId] = useState(null);
+  const [remitEditForm, setRemitEditForm] = useState(null);
+
   useEffect(() => {
     if (!supabaseUrl || !supabaseKey) return;
     const initSupabase = () => {
@@ -316,6 +325,13 @@ export default function App() {
            cash: settleData.cash || 0
          });
       }
+
+      // 송금 내역 불러오기
+      const { data: remitData, error: remitError } = await supabaseClient.from('remittance_history').select('*').order('date', { ascending: false });
+      if (remitData) {
+          setRemittanceHistory(remitData);
+      }
+
     } catch (error) {
       console.error("DB Fetch Error:", error);
       showToast("데이터를 불러오는데 실패했습니다.", "error");
@@ -373,6 +389,12 @@ export default function App() {
   };
   const today = getLocalToday();
 
+  useEffect(() => {
+      if(showRemittanceModal && !newRemittance.date) {
+          setNewRemittance(prev => ({...prev, date: today}));
+      }
+  }, [showRemittanceModal, today]);
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [formData, setFormData] = useState({ date: today, product: '', option: '', quantity: 1, price: 0, unitPrice: 0, note: '' });
@@ -426,11 +448,16 @@ export default function App() {
   };
 
   const handleDeleteSale = async (id) => {
-    if (window.confirm("이 판매 내역을 완전히 삭제하시겠습니까?")) {
-      if (supabaseClient) await supabaseClient.from('sales').delete().eq('id', id);
-      setSales(sales.filter(sale => sale.id !== id));
-      showToast("삭제되었습니다.", "info");
-    }
+    setConfirmDialog({
+      isOpen: true,
+      message: "이 판매 내역을 완전히 삭제하시겠습니까?",
+      onConfirm: async () => {
+        if (supabaseClient) await supabaseClient.from('sales').delete().eq('id', id);
+        setSales(prev => prev.filter(sale => sale.id !== id));
+        showToast("삭제되었습니다.", "info");
+        setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
   };
 
   const saveEdit = async () => {
@@ -453,11 +480,16 @@ export default function App() {
   };
 
   const handleDeleteInv = async (id) => {
-    if(window.confirm("이 품목을 재고 목록에서 삭제하시겠습니까?")) {
-      if (supabaseClient) await supabaseClient.from('inventory').delete().eq('id', id);
-      setInventoryData(inventoryData.filter(i => i.id !== id));
-      showToast("삭제되었습니다.", "info");
-    }
+    setConfirmDialog({
+      isOpen: true,
+      message: "이 품목을 재고 목록에서 삭제하시겠습니까?",
+      onConfirm: async () => {
+        if (supabaseClient) await supabaseClient.from('inventory').delete().eq('id', id);
+        setInventoryData(prev => prev.filter(i => i.id !== id));
+        showToast("삭제되었습니다.", "info");
+        setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
   };
 
   const handleAddManualInv = async (e) => {
@@ -492,7 +524,6 @@ export default function App() {
     showToast("재고가 추가되었습니다!", "success");
   };
 
-  // 💡 매개변수 isAutoSave를 추가하여 알림 메시지를 다르게 표시합니다.
   const handleSaveSettlement = async (isAutoSave = false) => {
     setIsSettlementSaving(true);
     if (supabaseClient) {
@@ -508,6 +539,102 @@ export default function App() {
       showToast(isAutoSave === true ? "자동 저장되었습니다. (로컬)" : "로컬 환경에 저장되었습니다.", "success");
     }
     setIsSettlementSaving(false);
+  };
+
+  const handleAddRemittance = async (e) => {
+      e.preventDefault();
+      if (!newRemittance.amount || newRemittance.amount <= 0) return showToast("정상적인 송금액을 입력해주세요.", "error");
+
+      const newItem = {
+          id: Date.now() + Math.floor(Math.random() * 10000),
+          date: newRemittance.date,
+          amount: Number(newRemittance.amount),
+          note: newRemittance.note
+      };
+
+      const updatedIntermediate = (settlementData.intermediate || 0) + newItem.amount;
+
+      if (supabaseClient) {
+          try {
+             await supabaseClient.from('remittance_history').insert([newItem]);
+          } catch(e) { console.warn("remittance_history 테이블이 없을 수 있습니다."); }
+          
+          await supabaseClient.from('settlement').upsert([{
+            id: 1, 
+            intermediate: updatedIntermediate,
+            account: settlementData.account,
+            cash: settlementData.cash
+          }]);
+      }
+
+      setRemittanceHistory([newItem, ...remittanceHistory].sort((a,b) => new Date(b.date) - new Date(a.date)));
+      setSettlementData(prev => ({ ...prev, intermediate: updatedIntermediate }));
+      setNewRemittance({ date: today, amount: 0, note: '' });
+      showToast("정산 금액이 추가되었습니다.", "success");
+  };
+
+  const handleDeleteRemittance = async (id, amount) => {
+      setConfirmDialog({
+          isOpen: true,
+          message: "이 송금 내역을 삭제하시겠습니까? 총 정산된 금액에서 차감됩니다.",
+          onConfirm: async () => {
+              const updatedIntermediate = (settlementData.intermediate || 0) - amount;
+
+              if (supabaseClient) {
+                  try {
+                      await supabaseClient.from('remittance_history').delete().eq('id', id);
+                  } catch(e) {}
+                  await supabaseClient.from('settlement').upsert([{
+                    id: 1, 
+                    intermediate: updatedIntermediate,
+                    account: settlementData.account,
+                    cash: settlementData.cash
+                  }]);
+              }
+              setRemittanceHistory(prev => prev.filter(r => r.id !== id));
+              setSettlementData(prev => ({ ...prev, intermediate: updatedIntermediate }));
+              showToast("삭제되었습니다.", "info");
+              setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+          }
+      });
+  }
+
+  const startRemitEdit = (item) => { setEditingRemitId(item.id); setRemitEditForm({ ...item }); };
+  const cancelRemitEdit = () => { setEditingRemitId(null); setRemitEditForm(null); };
+
+  const saveRemitEdit = async () => {
+      if (!remitEditForm.amount || remitEditForm.amount <= 0) return showToast("정상적인 송금액을 입력해주세요.", "error");
+
+      const oldItem = remittanceHistory.find(r => r.id === editingRemitId);
+      const diff = Number(remitEditForm.amount) - oldItem.amount;
+      const updatedIntermediate = (settlementData.intermediate || 0) + diff;
+
+      const updatedRemit = {
+          ...remitEditForm,
+          amount: Number(remitEditForm.amount)
+      };
+
+      if (supabaseClient) {
+          try {
+              await supabaseClient.from('remittance_history').update({
+                  date: updatedRemit.date,
+                  amount: updatedRemit.amount,
+                  note: updatedRemit.note
+              }).eq('id', updatedRemit.id);
+          } catch(e) { console.warn("remittance_history 업데이트 실패"); }
+
+          await supabaseClient.from('settlement').upsert([{
+              id: 1, 
+              intermediate: updatedIntermediate,
+              account: settlementData.account,
+              cash: settlementData.cash
+          }]);
+      }
+
+      setRemittanceHistory(remittanceHistory.map(r => r.id === editingRemitId ? updatedRemit : r).sort((a,b) => new Date(b.date) - new Date(a.date)));
+      setSettlementData(prev => ({ ...prev, intermediate: updatedIntermediate }));
+      cancelRemitEdit();
+      showToast("수정되었습니다.", "success");
   };
 
   const applyPendingData = async () => {
@@ -590,11 +717,16 @@ export default function App() {
   };
 
   const deleteMap = async (rawId) => {
-    if(window.confirm("이 매칭 정보를 삭제하시겠습니까?")) {
-      if (supabaseClient) await supabaseClient.from('option_mappings').delete().eq('rawId', rawId);
-      setOptionMappings(optionMappings.filter(m => m.rawId !== rawId));
-      showToast("삭제되었습니다.", "info");
-    }
+    setConfirmDialog({
+      isOpen: true,
+      message: "이 매칭 정보를 삭제하시겠습니까?",
+      onConfirm: async () => {
+        if (supabaseClient) await supabaseClient.from('option_mappings').delete().eq('rawId', rawId);
+        setOptionMappings(prev => prev.filter(m => m.rawId !== rawId));
+        showToast("삭제되었습니다.", "info");
+        setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
   };
 
   const currentInventory = useMemo(() => {
@@ -668,7 +800,7 @@ export default function App() {
   const [showRawDataInput, setShowRawDataInput] = useState(false); 
 
   useEffect(() => {
-    if (maximizedView) {
+    if (maximizedView || showRemittanceModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -676,7 +808,7 @@ export default function App() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [maximizedView]);
+  }, [maximizedView, showRemittanceModal]);
 
   const handleCloseModal = () => {
     setMaximizedView(null); 
@@ -685,6 +817,7 @@ export default function App() {
     setSortConfig({ key: 'date', direction: 'desc' });
     setEditingSaleId(null); setEditForm(null); setEditingInvId(null); setInvEditForm(null);
     setBulkInvInput(''); setPendingRawData([]); setInvTab('stock'); setEditingMapId(null); setShowRawDataInput(false);
+    setEditingRemitId(null); setRemitEditForm(null);
   };
 
   const exportToCSV = (data, type) => {
@@ -1070,11 +1203,11 @@ export default function App() {
                                   <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate">{sale.note}</div>
                                 </td>
                                 <td className="px-3 py-3.5 hidden sm:table-cell text-gray-600 dark:text-gray-400 truncate">{sale.option}</td>
-                                <td className="px-2 py-3.5 text-center font-bold text-gray-900 dark:text-gray-200 truncate">{Number(sale.quantity).toLocaleString()}</td>
+                                <td className="px-2 py-3.5 text-center font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200 truncate">{Number(sale.quantity).toLocaleString()}</td>
                                 <td className="px-2 py-3.5 text-right">
                                   <div className="font-black text-gray-900 dark:text-white truncate">{Number(sale.totalPrice).toLocaleString()}원</div>
                                 </td>
-                                <td className="px-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell truncate" title={sale.note}>{sale.note}</td>
+                                <td className="px-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell truncate" title={sale.note}>{sale.note || '-'}</td>
                                 <td className="px-2 pr-3 sm:pr-5 py-3.5 text-center">
                                   <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => startEdit(sale)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={16}/></button>
@@ -1108,87 +1241,116 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    {[
-                      { key: 'intermediate', label: '대표님 송금액', desc: '입금 완료한 정산금', icon: <Coins size={16} className="text-gray-500 dark:text-gray-400" /> },
-                      { key: 'account', label: '내 계좌 잔액', desc: '현재 계좌 잔고', icon: <Landmark size={16} className="text-gray-500 dark:text-gray-400" /> },
-                      { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={16} className="text-gray-500 dark:text-gray-400" /> }
-                    ].map((item) => (
-                      <div key={item.key} className="p-4 bg-gray-50/80 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col justify-between h-full transition-colors">
-                        <div className="flex flex-col items-start mb-4">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            {item.icon}
-                            <span className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{item.label}</span>
-                          </div>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{item.desc}</span>
+                  {/* 세련된 무채색 기반의 단일 패널 디자인 */}
+                  <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100 dark:divide-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl mb-8 bg-white dark:bg-gray-900 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+                    {/* 1. 정산된 금액 (팝업 호출 버튼 최적화) */}
+                    <div className="flex-1 p-5 lg:p-6 relative flex flex-col justify-between">
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <label className="flex items-center text-sm font-bold text-gray-700 dark:text-gray-300">
+                            <Coins size={16} className="text-gray-400 mr-2" />정산된 금액
+                          </label>
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-1">입금 완료한 총 누적액</span>
                         </div>
-                        <div className="flex items-center justify-end border-b border-gray-300 dark:border-gray-600 pb-1.5 focus-within:border-orange-500 dark:focus-within:border-orange-500 transition-colors">
+                        {/* 💡 버튼 터치 영역 확장(p-2), 최상단 노출(z-10), 이벤트 씹힘 방지 코드 추가 */}
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowRemittanceModal(true);
+                          }}
+                          className="group flex items-center gap-0.5 text-xs font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap p-2 -mr-2 -mt-1 relative z-10 cursor-pointer"
+                        >
+                          내역 관리 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                      </div>
+                      <div className="flex justify-end items-end pb-1 border-b border-transparent">
+                        <div className="text-right font-black text-2xl text-gray-900 dark:text-white tracking-tight truncate">
+                           {Number(settlementData.intermediate).toLocaleString()} 
+                        </div>
+                        <span className="text-sm font-semibold text-gray-400 ml-1 mb-1">원</span>
+                      </div>
+                    </div>
+
+                    {/* 2 & 3. 계좌 및 현금 입력 */}
+                    {[
+                      { key: 'account', label: '내 계좌 잔액', desc: '현재 계좌 잔고', icon: <Landmark size={16} className="text-gray-400 mr-2" /> },
+                      { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={16} className="text-gray-400 mr-2" /> }
+                    ].map((item) => (
+                      <div key={item.key} className="flex-1 p-5 lg:p-6 relative">
+                        <div className="mb-6">
+                          <label className="flex items-center text-sm font-bold text-gray-700 dark:text-gray-300">{item.icon}{item.label}</label>
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-1">{item.desc}</span>
+                        </div>
+                        <div className="flex items-end justify-end border-b border-transparent focus-within:border-gray-300 dark:focus-within:border-gray-600 transition-colors pb-1">
                           <FormattedNumberInput
-                            value={settlementData[item.key]}
+                            value={settlementData[item.key] === 0 ? '' : settlementData[item.key]}
                             onChange={(e) => {
                               const rawValue = e.target.value.replace(/[^0-9]/g, '');
                               setSettlementData({ ...settlementData, [item.key]: Number(rawValue) || 0 });
                             }}
                             onBlur={() => handleSaveSettlement(true)}
-                            className="w-full text-right font-black text-xl bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                            className="w-full text-right font-black text-2xl bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700 tracking-tight"
                             placeholder="0"
                           />
-                          <span className="ml-1.5 text-sm font-bold text-gray-500 dark:text-gray-400">원</span>
+                          <span className="text-sm font-semibold text-gray-400 ml-1 mb-1">원</span>
                         </div>
                       </div>
                     ))}
                   </div>
 
+                  {/* 영수증/장부 스타일의 플랫한 자동 계산 영역 */}
                   {(() => {
                     const remitted = Number(settlementData.intermediate) || 0; 
                     const inAccount = Number(settlementData.account) || 0;     
                     const inCash = Number(settlementData.cash) || 0;           
                     const totalSales = totalSalesSummary.totalAmount || 0;     
+                    
                     const unsettledAmount = totalSales - remitted;
                     const totalAsset = inAccount + inCash;
                     const tillDifference = totalAsset - unsettledAmount;
 
                     return (
-                      <div className="flex flex-col gap-3">
-                        <div className="p-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
-                          <div>
-                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm truncate">
-                              <Clock size={16} className="text-gray-500 dark:text-gray-400 mr-2 shrink-0" /> 미정산금 <span className="font-normal text-xs text-gray-500 ml-1.5">(보관 중)</span>
-                            </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block truncate">
-                              누적 판매금({totalSales.toLocaleString()}원) - 송금액({remitted.toLocaleString()}원)
-                            </span>
+                      <div className="px-2 sm:px-4 pb-4">
+                        <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-widest">결과 요약</h3>
+                        <div className="flex flex-col">
+                          {/* 미정산금 */}
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 dark:border-gray-800 gap-2">
+                            <div>
+                              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm">
+                                미정산금 <span className="font-medium text-xs text-gray-400 ml-2 hidden sm:inline">(보관 중인 판매대금)</span>
+                              </span>
+                            </div>
+                            {/* 💡 justify-between을 justify-end로 변경하여 모바일에서 항상 우측 정렬되도록 수정 */}
+                            <div className="flex items-center justify-end gap-4 w-full sm:w-auto">
+                              <span className="text-[11px] text-gray-400 hidden lg:inline">누적 판매({totalSales.toLocaleString()}) - 정산({remitted.toLocaleString()})</span>
+                              <span className="font-bold text-lg text-gray-900 dark:text-white text-right tracking-tight">{unsettledAmount.toLocaleString()} 원</span>
+                            </div>
                           </div>
-                          <span className="font-black text-xl text-gray-900 dark:text-white text-right shrink-0">
-                            {unsettledAmount.toLocaleString()} 원
-                          </span>
-                        </div>
 
-                        <div className="p-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2">
-                          <div>
-                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm truncate">
-                              <Wallet size={16} className="text-gray-500 dark:text-gray-400 mr-2 shrink-0" /> 현재 보유 자산 <span className="font-normal text-xs text-gray-500 ml-1.5">(계좌+현금)</span>
-                            </span>
+                          {/* 현재 보유 자산 */}
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 dark:border-gray-800 gap-2">
+                            <div>
+                              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm">
+                                현재 보유 자산 <span className="font-medium text-xs text-gray-400 ml-2 hidden sm:inline">(계좌 + 현금)</span>
+                              </span>
+                            </div>
+                            <span className="font-bold text-lg text-gray-900 dark:text-white text-right tracking-tight">{totalAsset.toLocaleString()} 원</span>
                           </div>
-                          <span className="font-black text-xl text-gray-900 dark:text-white text-right shrink-0">
-                            {totalAsset.toLocaleString()} 원
-                          </span>
-                        </div>
 
-                        <div className={`p-5 rounded-xl border flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-2 transition-colors ${tillDifference === 0 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50' : tillDifference > 0 ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/50'}`}>
-                          <div>
-                            <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center text-sm truncate">
-                              <Scale size={16} className={`mr-2 shrink-0 ${tillDifference === 0 ? 'text-emerald-500' : tillDifference > 0 ? 'text-blue-500' : 'text-red-500'}`} /> 최종 시재 (차액)
-                            </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block truncate">
-                              {tillDifference === 0 ? '정산 내역이 완벽히 일치합니다.' : 
-                               tillDifference > 0 ? '보유 자산이 미정산금보다 많습니다.' : 
-                               '보유 자산이 미정산금보다 부족합니다.'}
+                          {/* 시재 (차액) */}
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-5 mt-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl gap-3 border border-gray-100 dark:border-gray-800/80">
+                            <div>
+                              <span className="font-black text-gray-800 dark:text-gray-200 flex items-center text-base">
+                                최종 시재 (차액)
+                              </span>
+                              <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 block">현재 보유 자산 - 미정산금</span>
+                            </div>
+                            <span className={`font-black text-2xl md:text-3xl text-right tracking-tight ${tillDifference === 0 ? 'text-gray-900 dark:text-white' : tillDifference > 0 ? 'text-blue-500' : 'text-orange-500'}`}>
+                              {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} <span className="text-base font-bold text-gray-500 ml-0.5">원</span>
                             </span>
                           </div>
-                          <span className={`font-black text-2xl text-right shrink-0 ${tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : tillDifference > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} <span className="text-base font-bold ml-0.5">원</span>
-                          </span>
                         </div>
                       </div>
                     );
@@ -1717,10 +1879,10 @@ export default function App() {
                                   </div>
                                 </td>
                                 <td className="px-1 py-2 text-center align-top">
-                                  <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto sm:border sm:border-gray-300 dark:sm:border-gray-600 rounded-md overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
-                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
-                                     <FormattedNumberInput value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: Number(val)}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" required={true} />
-                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
+                                  <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto border border-gray-300 dark:border-gray-600 rounded overflow-hidden bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
+                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
+                                     <FormattedNumberInput value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: Number(val)}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-transparent outline-none" required={true} />
+                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
                                   </div>
                                 </td>
                                 <td className="px-1 sm:px-2 py-2 text-right align-top">
@@ -1759,7 +1921,7 @@ export default function App() {
                               <td className="px-1 pr-3 sm:pr-5 py-2.5 sm:py-3.5 text-center whitespace-nowrap">
                                 <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button onClick={() => startEdit(sale)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
-                                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1 sm:p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
+                                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
                                 </div>
                               </td>
                             </tr>
@@ -1810,6 +1972,145 @@ export default function App() {
                 })()}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* --- 송금 내역 관리 모달 (디자인 최적화 완료) --- */}
+      {showRemittanceModal && (
+        <div className="fixed inset-0 bg-gray-900/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 transition-colors">
+          {/* 💡 max-w-lg를 max-w-xl로 키워서 전체적으로 답답함을 해소했습니다! */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-xl flex flex-col overflow-hidden border-2 border-gray-200 dark:border-gray-700 dark:[color-scheme:dark]">
+            
+            {/* 헤더 부분 무채색 + 아이콘 주황색 유지 */}
+            <div className="px-5 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2.5">
+                 {/* 💡 배경은 없애고 아이콘 텍스트 색상만 주황색으로 유지! */}
+                 <Coins size={20} className="text-orange-500" />
+                 <h2 className="text-lg font-black text-gray-900 dark:text-white">정산 내역 관리</h2>
+              </div>
+              <button onClick={() => { setShowRemittanceModal(false); cancelRemitEdit(); }} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><X size={22} /></button>
+            </div>
+            
+            {/* 입력 폼 무채색 기반 통일 */}
+            <div className="p-5 sm:p-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+               <form onSubmit={handleAddRemittance} className="flex flex-col gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                     <div className="col-span-1">
+                        <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">송금일</label>
+                        <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 shadow-sm h-10">
+                           <CustomDatePicker startDate={newRemittance.date} onChange={(d) => setNewRemittance({...newRemittance, date: d})} className="w-full px-3 text-sm font-bold text-gray-900 dark:text-white bg-transparent outline-none" wrapperClassName="w-full" isRangeMode={false} />
+                        </div>
+                     </div>
+                     <div className="col-span-1 sm:col-span-2">
+                        <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">송금액 (원)</label>
+                        <div className="flex items-center w-full border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden transition-colors shadow-sm focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 h-10">
+                            <FormattedNumberInput value={newRemittance.amount} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setNewRemittance({...newRemittance, amount: Number(v)})}} className="flex-1 w-full px-3 text-sm font-black bg-transparent text-gray-900 dark:text-white outline-none text-right" placeholder="0" required={true}/>
+                        </div>
+                     </div>
+                  </div>
+                  <div>
+                      <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">비고 (선택)</label>
+                      <div className="flex gap-2 sm:gap-3 h-10">
+                          <input type="text" value={newRemittance.note} onChange={e => setNewRemittance({...newRemittance, note: e.target.value})} className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg px-3 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-1 focus:ring-orange-500 transition-colors shadow-sm" placeholder="예: 1주차 정산금" />
+                          <button type="submit" className="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white font-bold px-5 sm:px-6 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-sm h-full">내역 추가</button>
+                      </div>
+                  </div>
+               </form>
+            </div>
+
+            <div className="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-gray-900 p-0 max-h-[40vh] sm:max-h-[45vh] relative">
+                <table className="w-full text-sm text-left table-fixed">
+                    <thead className="bg-gray-50/90 dark:bg-gray-800/80 sticky top-0 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm z-10">
+                        {/* 💡 모바일에서도 송금일이 절대 잘리지 않도록 비율을 35%로 맞추고 whitespace-nowrap 적용! */}
+                        <tr>
+                            <th className="px-4 sm:px-6 py-3 font-semibold w-[35%] sm:w-[25%] whitespace-nowrap">송금일</th>
+                            <th className="px-2 py-3 font-semibold text-right w-[40%] sm:w-[25%] truncate">금액</th>
+                            <th className="px-4 sm:px-6 py-3 font-semibold hidden sm:table-cell w-[35%] truncate">비고</th>
+                            <th className="px-2 sm:px-3 py-3 text-center w-[25%] sm:w-[15%] truncate">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+                        {remittanceHistory.length === 0 ? (
+                           <tr><td colSpan="4" className="text-center text-gray-400 dark:text-gray-500 py-16 font-medium text-sm">저장된 송금 내역이 없습니다.</td></tr>
+                        ) : (
+                           remittanceHistory.map(item => {
+                               if (editingRemitId === item.id) {
+                                   return (
+                                       <tr key={item.id} className="bg-orange-50/50 dark:bg-orange-900/10">
+                                           <td className="px-2 sm:px-4 py-2 align-top">
+                                               <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
+                                                   <CustomDatePicker startDate={remitEditForm.date} onChange={(d) => setRemitEditForm({...remitEditForm, date: d})} className="w-full pl-2 py-1.5 text-xs bg-transparent outline-none font-bold text-gray-900 dark:text-white" wrapperClassName="w-full" isRangeMode={false} />
+                                               </div>
+                                           </td>
+                                           <td className="px-2 py-2 align-top">
+                                               <FormattedNumberInput value={remitEditForm.amount} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setRemitEditForm({...remitEditForm, amount: Number(val)}); }} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-right text-xs sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" required={true} />
+                                           </td>
+                                           <td className="px-2 sm:px-4 py-2 hidden sm:table-cell align-top">
+                                               <input type="text" value={remitEditForm.note} onChange={e => setRemitEditForm({...remitEditForm, note: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="비고" />
+                                           </td>
+                                           <td className="px-1 py-2 text-center align-top pt-3">
+                                               <div className="flex justify-center items-center gap-1 sm:gap-1.5">
+                                                   <button type="button" onClick={(e) => { e.stopPropagation(); saveRemitEdit(); }} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 sm:p-1.5 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 transition-colors"><Check size={14}/></button>
+                                                   <button type="button" onClick={(e) => { e.stopPropagation(); cancelRemitEdit(); }} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 sm:p-1.5 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 transition-colors"><X size={14}/></button>
+                                               </div>
+                                           </td>
+                                       </tr>
+                                   );
+                               }
+                               return (
+                                   <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors group">
+                                       <td className="px-4 sm:px-6 py-3.5">
+                                          {/* 💡 송금일은 공간이 부족해도 절대로 줄바꿈되거나 ... 처리되지 않게 고정 */}
+                                          <div className="font-bold text-gray-600 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">{item.date}</div>
+                                          <div className="text-[10px] text-gray-400 sm:hidden mt-0.5 truncate">{item.note || '-'}</div>
+                                       </td>
+                                       <td className="px-2 py-3.5 text-right font-black text-gray-900 dark:text-white truncate">{Number(item.amount).toLocaleString()}원</td>
+                                       <td className="px-4 sm:px-6 py-3.5 text-xs text-gray-500 dark:text-gray-400 truncate hidden sm:table-cell" title={item.note}>{item.note || '-'}</td>
+                                       <td className="px-2 sm:px-3 py-3.5 text-center whitespace-nowrap">
+                                           <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                               <button type="button" onClick={(e) => { e.stopPropagation(); startRemitEdit(item); }} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={16} /></button>
+                                               <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteRemittance(item.id, item.amount); }} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="삭제"><Trash2 size={16}/></button>
+                                           </div>
+                                       </td>
+                                   </tr>
+                               );
+                           })
+                        )}
+                        <tr className="h-full pointer-events-none"><td colSpan="4" className="p-0 border-0"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div className="px-5 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 flex justify-between items-center shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+               <span className="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400">총 누적 송금액</span>
+               <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{Number(settlementData.intermediate).toLocaleString()}<span className="text-sm font-bold ml-1 text-gray-500">원</span></span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- 공통 커스텀 확인(Confirm) 모달 --- */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 transform scale-100 transition-all">
+            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <AlertCircle className="text-red-500" size={20} /> 삭제 확인
+            </h3>
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-6">{confirmDialog.message}</p>
+            <div className="flex justify-end gap-2">
+              <button 
+                onClick={() => setConfirmDialog({ isOpen: false, message: '', onConfirm: null })} 
+                className="px-4 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                취소
+              </button>
+              <button 
+                onClick={confirmDialog.onConfirm} 
+                className="px-4 py-2 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors shadow-sm"
+              >
+                삭제
+              </button>
+            </div>
           </div>
         </div>
       )}
