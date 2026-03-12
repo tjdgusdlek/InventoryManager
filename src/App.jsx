@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Minus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, RefreshCw, TrendingUp, Download, RotateCcw, CheckCircle2, XCircle, Info, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, RefreshCw, TrendingUp, Download, RotateCcw, CheckCircle2, XCircle, Info, ChevronRight, Camera } from 'lucide-react';
 
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
@@ -188,7 +188,7 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
   );
 };
 
-// 💡 1. 스마트 숫자 입력기 컴포넌트 추가 (중간 숫자 삭제 버그 방지)
+// 💡 스마트 숫자 입력기 컴포넌트 (중간 숫자 삭제 버그 방지)
 const FormattedNumberInput = ({ value, onChange, onBlur, className, placeholder, name, required }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState('');
@@ -275,7 +275,7 @@ export default function App() {
   // --- 커스텀 확인 모달 상태 ---
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
 
-  // 💡 과거 데이터(재고 차감 제외) 옵션 상태 추가
+  // 과거 데이터(재고 차감 제외) 옵션 상태
   const [isNoDeduct, setIsNoDeduct] = useState(false);
 
   // 송금 내역 관련 상태
@@ -288,6 +288,9 @@ export default function App() {
   // --- 판매 내역 등록 모드 상태 (수동 vs 엑셀) ---
   const [salesAddMode, setSalesAddMode] = useState('manual');
   const [bulkSalesInput, setBulkSalesInput] = useState('');
+
+  // 캡처 영역 지정을 위한 Ref
+  const salesSummaryRef = useRef(null);
 
   useEffect(() => {
     if (!supabaseUrl || !supabaseKey) return;
@@ -334,7 +337,7 @@ export default function App() {
       }
 
       // 송금 내역 불러오기
-      const { data: remitData, error: remitError } = await supabaseClient.from('remittance_history').select('*').order('date', { ascending: false });
+      const { data: remitData } = await supabaseClient.from('remittance_history').select('*').order('date', { ascending: false });
       if (remitData) {
           setRemittanceHistory(remitData);
       }
@@ -433,7 +436,6 @@ export default function App() {
     e.preventDefault();
     if (!formData.product || !formData.option || formData.quantity <= 0) return showToast("상품, 옵션, 수량을 정확히 입력해주세요.", "error");
 
-    // 💡 과거 기록 옵션이 켜져있으면 비고란에 몰래 숨김 태그를 붙입니다.
     let finalNote = formData.note || '';
     if (isNoDeduct) {
       finalNote = finalNote ? finalNote + ' [재고차감X]' : '[재고차감X]';
@@ -460,7 +462,6 @@ export default function App() {
     setFormData({ date: formData.date, product: '', option: '', quantity: 1, price: 0, unitPrice: 0, note: '' });
   };
 
-  // 💡 엑셀 일괄 추가 파싱 로직 (확인 단계 추가)
   const handleParseBulkSales = async () => {
     if (!bulkSalesInput.trim()) return showToast("데이터를 입력해주세요.", "error");
     
@@ -481,7 +482,6 @@ export default function App() {
         const quantity = parseInt(row[3].replace(/,/g, ''), 10) || 0;
         const totalPrice = parseInt(row[4].replace(/,/g, ''), 10) || 0;
         
-        // 💡 엑셀 비고 내용에 숨김 태그 추가
         let note = row[5] || '';
         if (isNoDeduct) {
           note = note ? note + ' [재고차감X]' : '[재고차감X]';
@@ -508,7 +508,6 @@ export default function App() {
 
     if (newSales.length === 0) return showToast("인식할 수 있는 데이터가 없습니다. 열 순서를 확인해주세요.", "error");
 
-    // 💡 이모티콘(📦, ⚠️)을 제거하고, 세련된 레이아웃과 Lucide 아이콘을 사용하도록 메시지 구성
     const confirmMessage = (
       <div className="flex flex-col gap-3 mt-1">
         <span className="text-gray-800 dark:text-gray-200">총 <strong>{newSales.length}</strong>건의 판매 내역을 일괄 등록하시겠습니까?</span>
@@ -557,6 +556,38 @@ export default function App() {
         setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
       }
     });
+  };
+
+  // 💡 1. 캡처 엔진을 html2canvas에서 html-to-image로 교체하여 글자 깨짐 현상 완벽 해결!
+  const handleCaptureSalesSummary = async () => {
+    if (!salesSummaryRef.current) return;
+    try {
+      showToast("고화질 이미지를 생성하는 중입니다...", "info");
+      
+      // 최신 브라우저 환경에 맞는 모듈(ESM) 방식으로 html-to-image 동적 로드
+      const htmlToImage = await import('https://esm.sh/html-to-image');
+      
+      const isDark = document.documentElement.classList.contains('dark') || window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      const dataUrl = await htmlToImage.toPng(salesSummaryRef.current, {
+        backgroundColor: isDark ? '#111827' : '#ffffff',
+        pixelRatio: 2, // 고해상도(Retina) 화질 유지
+        filter: (node) => {
+          // data-capture-ignore 속성이 있는 버튼(이미지로 저장)은 캡처 화면에서 숨김 처리
+          return !(node?.hasAttribute && node.hasAttribute('data-capture-ignore'));
+        },
+      });
+      
+      const link = document.createElement('a');
+      link.download = `판매요약_${getLocalToday()}.png`;
+      link.href = dataUrl;
+      link.click();
+      
+      showToast("고화질 이미지가 성공적으로 저장되었습니다!", "success");
+    } catch (error) {
+      console.error('Capture failed:', error);
+      showToast("이미지 저장에 실패했습니다.", "error");
+    }
   };
 
   const saveEdit = async () => {
@@ -828,7 +859,6 @@ export default function App() {
     });
   };
 
-  // 💡 엑셀 일괄 삭제 함수 추가 (검색된 결과만 모두 삭제)
   const handleBulkDeleteSales = async () => {
     if (modalDetailedData.length === 0) return showToast("삭제할 데이터가 없습니다.", "error");
     
@@ -857,7 +887,6 @@ export default function App() {
   const currentInventory = useMemo(() => {
     const calculated = inventoryData.map(item => {
       const soldQty = sales
-        // 💡 [재고차감X] 태그가 없는 판매 내역만 추려서 차감합니다.
         .filter(sale => sale.product === item.product && sale.option === item.option && !(sale.note || '').includes('[재고차감X]'))
         .reduce((sum, sale) => sum + sale.quantity, 0);
       return { ...item, soldQty, remainQty: item.qty - soldQty };
@@ -1166,7 +1195,6 @@ export default function App() {
               {salesAddMode === 'manual' ? (
                 <form onSubmit={handleAddSale} className="p-5 flex flex-col gap-5 flex-1">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* 💡 사라졌던 날짜, 상품, 수량 등의 입력 칸 완벽 복구! */}
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">판매일</label>
                       <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 pr-1.5 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 shadow-sm">
@@ -1216,7 +1244,6 @@ export default function App() {
                       <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">비고 (선택)</label>
                       <input type="text" name="note" value={formData.note} onChange={handleFormChange} className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" placeholder="입금 방식 등..." />
                     </div>
-                    {/* 💡 과거 기록용 체크박스 디자인 은은하게 변경 (이모티콘 -> Archive 아이콘) */}
                     <div className="md:col-span-2 mt-1">
                       <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
                         <input type="checkbox" checked={isNoDeduct} onChange={e => setIsNoDeduct(e.target.checked)} className="w-3.5 h-3.5 text-orange-500 rounded border-gray-300 focus:ring-orange-500 cursor-pointer" />
@@ -1233,11 +1260,9 @@ export default function App() {
                 </form>
               ) : (
                 <div className="p-5 flex flex-col gap-4 flex-1">
-                   {/* 💡 break-keep 추가 및 괄호 부분 inline-block 처리로 깔끔한 줄바꿈 보장 */}
                    <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-100 dark:border-orange-800 text-[11px] sm:text-xs text-orange-800 dark:text-orange-300 mb-1 leading-relaxed break-keep">
                       엑셀에서 <strong>[판매일, 상품명, 옵션명, 수량, 판매금액, 비고]</strong> 순서대로 표를 복사한 후 아래에 붙여넣으세요. <span className="inline-block text-orange-700/80 dark:text-orange-300/80 mt-0.5 sm:mt-0">(첫 줄 제목 열 포함 가능)</span>
                    </div>
-                   {/* 💡 체크박스 부분도 깔끔하게 줄바꿈되도록 수정 */}
                    <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors mb-1 break-keep">
                       <input type="checkbox" checked={isNoDeduct} onChange={e => setIsNoDeduct(e.target.checked)} className="w-3.5 h-3.5 text-orange-500 rounded border-gray-300 focus:ring-orange-500 cursor-pointer shrink-0" />
                       <Archive size={14} className="shrink-0" />
@@ -1260,18 +1285,32 @@ export default function App() {
           </div>
 
           <div className="lg:col-span-8">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col transition-colors">
-              <div className="flex bg-gray-50/80 dark:bg-gray-800/50 pt-3 px-4 gap-2 border-b border-gray-200 dark:border-gray-800 shrink-0">
+            <div ref={salesSummaryRef} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col transition-colors">
+              <div className="flex bg-gray-50/80 dark:bg-gray-800/50 pt-3 px-4 gap-2 border-b border-gray-200 dark:border-gray-800 shrink-0 relative">
                 <button onClick={() => setSummaryTab('sales')} className={`px-5 py-2.5 rounded-t-xl font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${summaryTab === 'sales' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827] relative z-10' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}`}>
                   <PieChart size={16} className={summaryTab === 'sales' ? "text-orange-500" : ""} /> 판매 요약
                 </button>
                 <button onClick={() => setSummaryTab('settlement')} className={`px-5 py-2.5 rounded-t-xl font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${summaryTab === 'settlement' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827] relative z-10' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}`}>
                   <Database size={16} className={summaryTab === 'settlement' ? "text-orange-500" : ""} /> 정산 현황
                 </button>
+
+                {summaryTab === 'sales' && (
+                  <button 
+                    data-capture-ignore="true"
+                    onClick={handleCaptureSalesSummary}
+                    // 💡 2. 버튼 디자인을 정산내역 저장 버튼처럼 다크/화이트 대비를 주어 눈에 띄게 변경했습니다!
+                    className="ml-auto self-end mb-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white shadow-sm"
+                    title="현재 영역을 이미지로 저장"
+                  >
+                    <Camera size={14} className="shrink-0" />
+                    <span className="hidden sm:inline">이미지로 저장</span>
+                  </button>
+                )}
               </div>
 
               {summaryTab === 'sales' && (
                 <>
+                  {/* 💡 이전의 차분한 무채색 디자인으로 복구되었습니다 */}
                   <div className="grid grid-cols-2 md:grid-cols-5 border-b border-gray-100 dark:border-gray-800 text-center bg-white dark:bg-gray-900 shrink-0">
                     <div className="p-4 border-r border-b md:border-b-0 border-gray-100 dark:border-gray-800 flex flex-col justify-center">
                       <div className="text-[11px] md:text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 whitespace-nowrap">오늘 수량</div>
@@ -1376,7 +1415,6 @@ export default function App() {
                                   </div>
                                   <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden truncate">{sale.option}</div>
                                   <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate">
-                                    {/* 💡 모바일 뷰 뱃지 표시 및 태그 숨김 */}
                                     {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1 py-0.5 rounded mr-1 font-bold">재고유지</span>}
                                     {sale.note?.replace('[재고차감X]', '').trim()}
                                   </div>
@@ -1387,7 +1425,6 @@ export default function App() {
                                   <div className="font-black text-gray-900 dark:text-white truncate">{Number(sale.totalPrice).toLocaleString()}원</div>
                                 </td>
                                 <td className="px-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell truncate" title={sale.note}>
-                                  {/* 💡 PC 뷰 뱃지 표시 및 태그 숨김 */}
                                   {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] px-1.5 py-0.5 rounded mr-1 font-bold whitespace-nowrap">재고유지</span>}
                                   {sale.note?.replace('[재고차감X]', '').trim() || '-'}
                                 </td>
@@ -1424,9 +1461,7 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* 세련된 무채색 기반의 단일 패널 디자인 */}
                   <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100 dark:divide-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl mb-8 bg-white dark:bg-gray-900 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-                    {/* 1. 정산된 금액 (팝업 호출 버튼 최적화) */}
                     <div className="flex-1 p-5 lg:p-6 relative flex flex-col justify-between">
                       <div className="flex justify-between items-start mb-6">
                         <div>
@@ -1435,7 +1470,6 @@ export default function App() {
                           </label>
                           <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-1">입금 완료한 총 누적액</span>
                         </div>
-                        {/* 💡 버튼 터치 영역 확장(p-2), 최상단 노출(z-10), 이벤트 씹힘 방지 코드 추가 */}
                         <button 
                           type="button"
                           onClick={(e) => {
@@ -1456,7 +1490,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* 2 & 3. 계좌 및 현금 입력 */}
                     {[
                       { key: 'account', label: '내 계좌 잔액', desc: '현재 계좌 잔고', icon: <Landmark size={16} className="text-gray-400 mr-2" /> },
                       { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={16} className="text-gray-400 mr-2" /> }
@@ -1483,7 +1516,6 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* 영수증/장부 스타일의 플랫한 자동 계산 영역 */}
                   {(() => {
                     const remitted = Number(settlementData.intermediate) || 0; 
                     const inAccount = Number(settlementData.account) || 0;     
@@ -1498,7 +1530,6 @@ export default function App() {
                       <div className="px-2 sm:px-4 pb-4">
                         <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-widest">결과 요약</h3>
                         <div className="flex flex-col">
-                          {/* 미정산금 */}
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 dark:border-gray-800 gap-2">
                             <div>
                               <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm">
@@ -1511,7 +1542,6 @@ export default function App() {
                             </div>
                           </div>
 
-                          {/* 현재 보유 자산 */}
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 dark:border-gray-800 gap-2">
                             <div>
                               <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm">
@@ -1521,7 +1551,6 @@ export default function App() {
                             <span className="font-bold text-lg text-gray-900 dark:text-white text-right tracking-tight">{totalAsset.toLocaleString()} 원</span>
                           </div>
 
-                          {/* 시재 (차액) */}
                           <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center p-5 mt-6 rounded-2xl gap-3 border transition-colors ${
                             tillDifference === 0 
                               ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50' 
@@ -2027,7 +2056,6 @@ export default function App() {
                     {(searchProduct || searchOption || startDate) && <button onClick={() => { setSearchProduct(''); setSearchOption(''); setStartDate(''); setEndDate(''); }} className="text-[11px] sm:text-xs text-gray-400 hover:text-gray-800 dark:hover:text-white underline font-bold whitespace-nowrap">초기화</button>}
                   </div>
                   
-                  {/* 💡 모달창 버튼 그룹에 '조회된 전체 삭제' 버튼 추가 */}
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
                      <button onClick={handleBulkDeleteSales} className="flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 shadow-sm border border-red-200 dark:border-red-800 shrink-0">
                        <Trash2 size={14} /> <span className="hidden sm:inline">조회된 전체 삭제</span><span className="sm:hidden">일괄 삭제</span>
@@ -2058,28 +2086,28 @@ export default function App() {
                         modalDetailedData.map((sale) => {
                           if (editingSaleId === sale.id) {
                             return (
-                              <tr key={sale.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 group transition-colors">
-                                <td className="px-2 sm:px-4 py-2.5 sm:py-3.5 text-gray-500 dark:text-gray-400 font-medium text-[11px] sm:text-xs hidden sm:table-cell truncate">{sale.date}</td>
-                                <td className="px-2 sm:px-3 py-2.5 sm:py-3.5">
-                                  <div className="font-bold text-[11px] sm:text-sm text-gray-900 dark:text-white truncate">
-                                    {sale.product}
-                                  </div>
-                                  <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden truncate"><span className="text-orange-500 font-bold">{sale.date.substring(5)}</span> | {sale.option}</div>
-                                  <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate">
-                                    {/* 💡 모바일 뷰 뱃지 표시 및 태그 숨김 */}
-                                    {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1 py-0.5 rounded mr-1 font-bold">재고유지</span>}
-                                    {sale.note?.replace('[재고차감X]', '').trim()}
+                              <tr key={sale.id} className="bg-orange-50/50 dark:bg-orange-900/10">
+                                <td className="px-2 sm:px-4 py-2 hidden sm:table-cell align-top"><div className="flex flex-col gap-1 w-full"><div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500"><CustomDatePicker startDate={editForm.date} onChange={(start) => setEditForm({...editForm, date: start})} wrapperClassName="w-full" className="w-full pl-2 py-1.5 text-xs bg-transparent outline-none truncate font-bold text-gray-900 dark:text-white" isRangeMode={false} /></div></div></td>
+                                <td className="px-2 sm:px-3 py-2 align-top">
+                                  <div className="flex flex-col gap-1 w-full">
+                                    <input type="text" value={editForm.product} onChange={e => setEditForm({...editForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
+                                    <input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden" placeholder="옵션명" />
+                                    <input type="text" value={editForm.note} onChange={e => setEditForm({...editForm, note: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-[11px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden" placeholder="비고" />
                                   </div>
                                 </td>
-                                <td className="px-3 py-3.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell truncate">{sale.option}</td>
-                                <td className="px-1 py-2.5 sm:py-3.5 text-center font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200 truncate">{Number(sale.quantity).toLocaleString()}</td>
-                                <td className="px-1 sm:px-2 py-2.5 sm:py-3.5 text-right font-black text-[11px] sm:text-sm text-gray-900 dark:text-white truncate">{Number(sale.totalPrice).toLocaleString()}원</td>
-                                <td className="px-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell truncate" title={sale.note}>
-                                  {/* 💡 PC 뷰 뱃지 표시 및 태그 숨김 */}
-                                  {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] px-1.5 py-0.5 rounded mr-1 font-bold whitespace-nowrap">재고유지</span>}
-                                  {sale.note?.replace('[재고차감X]', '').trim() || '-'}
+                                <td className="px-3 py-2 hidden sm:table-cell align-top">
+                                  <div className="flex flex-col gap-1 w-full">
+                                    <input type="text" value={editForm.option} onChange={e => setEditForm({...editForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" />
+                                  </div>
                                 </td>
-                                <td className="px-1 pr-3 sm:pr-5 py-2.5 sm:py-3.5 text-center whitespace-nowrap">
+                                <td className="px-1 py-2 text-center align-top">
+                                  <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto sm:border sm:border-gray-300 dark:sm:border-gray-600 rounded-md overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
+                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
+                                     <FormattedNumberInput value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: Number(val)}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" required={true} />
+                                     <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
+                                  </div>
+                                </td>
+                                <td className="px-1 sm:px-2 py-2 text-right align-top">
                                   <div className="flex flex-col gap-1 w-full">
                                     <FormattedNumberInput value={editForm.price} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(val)}); }} className="w-full h-8 ml-auto border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" required={true} />
                                   </div>
@@ -2106,12 +2134,18 @@ export default function App() {
                                   {sale.product}
                                 </div>
                                 <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden truncate"><span className="text-orange-500 font-bold">{sale.date.substring(5)}</span> | {sale.option}</div>
-                                <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate">{sale.note}</div>
+                                <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 sm:hidden truncate">
+                                  {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1 py-0.5 rounded mr-1 font-bold">재고유지</span>}
+                                  {sale.note?.replace('[재고차감X]', '').trim()}
+                                </div>
                               </td>
                               <td className="px-3 py-3.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell truncate">{sale.option}</td>
                               <td className="px-1 py-2.5 sm:py-3.5 text-center font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200 truncate">{Number(sale.quantity).toLocaleString()}</td>
                               <td className="px-1 sm:px-2 py-2.5 sm:py-3.5 text-right font-black text-[11px] sm:text-sm text-gray-900 dark:text-white truncate">{Number(sale.totalPrice).toLocaleString()}원</td>
-                              <td className="px-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell truncate" title={sale.note}>{sale.note || '-'}</td>
+                              <td className="px-3 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell truncate" title={sale.note}>
+                                {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] px-1.5 py-0.5 rounded mr-1 font-bold whitespace-nowrap">재고유지</span>}
+                                {sale.note?.replace('[재고차감X]', '').trim() || '-'}
+                              </td>
                               <td className="px-1 pr-3 sm:pr-5 py-2.5 sm:py-3.5 text-center whitespace-nowrap">
                                 <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button onClick={() => startEdit(sale)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
@@ -2170,23 +2204,19 @@ export default function App() {
         </div>
       )}
 
-      {/* --- 송금 내역 관리 모달 (디자인 최적화 완료) --- */}
+      {/* --- 송금 내역 관리 모달 --- */}
       {showRemittanceModal && (
         <div className="fixed inset-0 bg-gray-900/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 transition-colors">
-          {/* 💡 max-w-lg를 max-w-xl로 키워서 전체적으로 답답함을 해소했습니다! */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-xl flex flex-col overflow-hidden border-2 border-gray-200 dark:border-gray-700 dark:[color-scheme:dark]">
             
-            {/* 헤더 부분 무채색 + 아이콘 주황색 유지 */}
             <div className="px-5 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2.5">
-                 {/* 💡 배경은 없애고 아이콘 텍스트 색상만 주황색으로 유지! */}
                  <Coins size={20} className="text-orange-500" />
                  <h2 className="text-lg font-black text-gray-900 dark:text-white">정산 내역 관리</h2>
               </div>
               <button onClick={() => { setShowRemittanceModal(false); cancelRemitEdit(); }} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><X size={22} /></button>
             </div>
             
-            {/* 입력 폼 무채색 기반 통일 */}
             <div className="p-5 sm:p-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
                <form onSubmit={handleAddRemittance} className="flex flex-col gap-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -2216,7 +2246,6 @@ export default function App() {
             <div className="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-gray-900 p-0 max-h-[40vh] sm:max-h-[45vh] relative">
                 <table className="w-full text-sm text-left table-fixed">
                     <thead className="bg-gray-50/90 dark:bg-gray-800/80 sticky top-0 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm z-10">
-                        {/* 💡 모바일에서도 송금일이 절대 잘리지 않도록 비율을 35%로 맞추고 whitespace-nowrap 적용! */}
                         <tr>
                             <th className="px-4 sm:px-6 py-3 font-semibold w-[35%] sm:w-[25%] whitespace-nowrap">송금일</th>
                             <th className="px-2 py-3 font-semibold text-right w-[40%] sm:w-[25%] truncate">금액</th>
@@ -2255,7 +2284,6 @@ export default function App() {
                                return (
                                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors group">
                                        <td className="px-4 sm:px-6 py-3.5">
-                                          {/* 💡 송금일은 공간이 부족해도 절대로 줄바꿈되거나 ... 처리되지 않게 고정 */}
                                           <div className="font-bold text-gray-600 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">{item.date}</div>
                                           <div className="text-[10px] text-gray-400 sm:hidden mt-0.5 truncate">{item.note || '-'}</div>
                                        </td>
@@ -2283,14 +2311,13 @@ export default function App() {
         </div>
       )}
 
-      {/* --- 공통 커스텀 확인(Confirm) 모달 --- */}
+      {/* --- 공통 커스텀 확인 모달 --- */}
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 transform scale-100 transition-all">
             <h3 className="text-lg font-black text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <AlertCircle className="text-red-500" size={20} /> 확인
             </h3>
-            {/* 💡 p 태그를 div로 변경하여 내부에 JSX가 렌더링될 수 있도록 수정, 줄바꿈 개선 */}
             <div className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-6 whitespace-pre-wrap leading-relaxed">
               {confirmDialog.message}
             </div>
