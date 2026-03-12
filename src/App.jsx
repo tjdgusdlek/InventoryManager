@@ -558,24 +558,55 @@ export default function App() {
     });
   };
 
-  // 💡 1. 캡처 엔진을 html2canvas에서 html-to-image로 교체하여 글자 깨짐 현상 완벽 해결!
+  // 💡 캡처 엔진 최적화: 버튼 숨김, 스크롤바 제거, 호버 효과 방지
   const handleCaptureSalesSummary = async () => {
     if (!salesSummaryRef.current) return;
+
+    const captureTarget = salesSummaryRef.current;
+    // 숨길 버튼 찾기
+    const ignoreElements = captureTarget.querySelectorAll('[data-capture-ignore="true"]');
+    // 스크롤바가 생기는 영역들 찾기
+    const scrollableDivs = captureTarget.querySelectorAll('.overflow-y-auto, .overflow-x-auto, .overflow-auto');
+
     try {
       showToast("고화질 이미지를 생성하는 중입니다...", "info");
       
-      // 최신 브라우저 환경에 맞는 모듈(ESM) 방식으로 html-to-image 동적 로드
-      const htmlToImage = await import('https://esm.sh/html-to-image');
+      // 1. 스크롤바를 캡처 화면에서만 임시로 완전히 없애는 CSS 주입
+      const style = document.createElement('style');
+      style.id = 'capture-temp-style';
+      style.innerHTML = `
+        .capture-hide-scrollbar::-webkit-scrollbar {
+          display: none !important;
+        }
+        .capture-hide-scrollbar {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+      `;
+      document.head.appendChild(style);
       
+      // 2. 레이아웃 붕괴를 막기 위해 버튼을 '투명'하게만 만듦
+      ignoreElements.forEach(el => {
+        el.style.opacity = '0';
+      });
+      
+      // 3. 스크롤 영역에 임시 스크롤바 숨김 클래스 적용
+      scrollableDivs.forEach(div => {
+        div.classList.add('capture-hide-scrollbar');
+      });
+
+      // 💡 투명도와 스크롤바 숨김이 화면에 반영될 수 있도록 0.15초 대기
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      const htmlToImage = await import('https://esm.sh/html-to-image');
       const isDark = document.documentElement.classList.contains('dark') || window.matchMedia('(prefers-color-scheme: dark)').matches;
       
-      const dataUrl = await htmlToImage.toPng(salesSummaryRef.current, {
+      const dataUrl = await htmlToImage.toPng(captureTarget, {
         backgroundColor: isDark ? '#111827' : '#ffffff',
-        pixelRatio: 2, // 고해상도(Retina) 화질 유지
-        filter: (node) => {
-          // data-capture-ignore 속성이 있는 버튼(이미지로 저장)은 캡처 화면에서 숨김 처리
-          return !(node?.hasAttribute && node.hasAttribute('data-capture-ignore'));
-        },
+        pixelRatio: 2, // 고해상도 유지
+        style: {
+          pointerEvents: 'none' // 캡처 순간의 마우스 호버(Hover) 효과 완벽 차단
+        }
       });
       
       const link = document.createElement('a');
@@ -587,6 +618,16 @@ export default function App() {
     } catch (error) {
       console.error('Capture failed:', error);
       showToast("이미지 저장에 실패했습니다.", "error");
+    } finally {
+      // 4. 캡처가 끝나면 모든 것을 사용자가 보던 원래 상태로 완벽히 복구!
+      ignoreElements.forEach(el => {
+        el.style.opacity = '';
+      });
+      scrollableDivs.forEach(div => {
+        div.classList.remove('capture-hide-scrollbar');
+      });
+      const styleEl = document.getElementById('capture-temp-style');
+      if (styleEl) styleEl.remove();
     }
   };
 
@@ -1293,19 +1334,6 @@ export default function App() {
                 <button onClick={() => setSummaryTab('settlement')} className={`px-5 py-2.5 rounded-t-xl font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${summaryTab === 'settlement' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-t border-x border-gray-200 dark:border-gray-800 shadow-[0_4px_0_0_white] dark:shadow-[0_4px_0_0_#111827] relative z-10' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}`}>
                   <Database size={16} className={summaryTab === 'settlement' ? "text-orange-500" : ""} /> 정산 현황
                 </button>
-
-                {summaryTab === 'sales' && (
-                  <button 
-                    data-capture-ignore="true"
-                    onClick={handleCaptureSalesSummary}
-                    // 💡 2. 버튼 디자인을 정산내역 저장 버튼처럼 다크/화이트 대비를 주어 눈에 띄게 변경했습니다!
-                    className="ml-auto self-end mb-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white shadow-sm"
-                    title="현재 영역을 이미지로 저장"
-                  >
-                    <Camera size={14} className="shrink-0" />
-                    <span className="hidden sm:inline">이미지로 저장</span>
-                  </button>
-                )}
               </div>
 
               {summaryTab === 'sales' && (
@@ -1334,11 +1362,23 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 dark:bg-gray-800/30 px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0">
+                  {/* 💡 "이미지로 저장" 버튼이 달력 옆으로 이동하고 디자인이 동기화되었습니다! */}
+                  <div className="bg-gray-50 dark:bg-gray-800/30 px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0 flex-wrap gap-2">
                     <span className="text-sm font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">오늘 판매 상세 내역</span>
-                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm whitespace-nowrap">
-                      <Calendar size={12} className="text-orange-500" />
-                      <span>{formatDateWithDay(today)}</span>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button 
+                        data-capture-ignore="true"
+                        onClick={handleCaptureSalesSummary}
+                        className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors whitespace-nowrap cursor-pointer"
+                        title="현재 영역을 이미지로 저장"
+                      >
+                        <Camera size={12} className="text-gray-500 dark:text-gray-400" />
+                        <span className="hidden sm:inline">이미지로 저장</span>
+                      </button>
+                      <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm whitespace-nowrap">
+                        <Calendar size={12} className="text-orange-500" />
+                        <span>{formatDateWithDay(today)}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 bg-white dark:bg-gray-900 relative w-full">
