@@ -292,6 +292,10 @@ export default function App() {
   // 캡처 영역 지정을 위한 Ref
   const salesSummaryRef = useRef(null);
 
+  // 💡 선택(일괄) 삭제 모드를 위한 상태 변수 추가
+  const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
+  const [selectedSalesIds, setSelectedSalesIds] = useState([]);
+
   useEffect(() => {
     if (!supabaseUrl || !supabaseKey) return;
     const initSupabase = () => {
@@ -610,7 +614,7 @@ export default function App() {
       showToast("고화질 이미지가 성공적으로 저장되었습니다!", "success");
     } catch (error) {
       console.error('Capture failed:', error);
-      showToast("이미지 저장에 실패했습니다.", "error");
+      showToast("이미 저장에 실패했습니다.", "error");
     } finally {
       ignoreElements.forEach(el => {
         el.style.opacity = '';
@@ -892,17 +896,16 @@ export default function App() {
     });
   };
 
-  const handleBulkDeleteSales = async () => {
-    if (modalDetailedData.length === 0) return showToast("삭제할 데이터가 없습니다.", "error");
+  // 💡 선택된 항목들을 일괄 삭제하는 기능으로 업그레이드
+  const handleDeleteSelected = async () => {
+    if (selectedSalesIds.length === 0) return showToast("삭제할 데이터를 선택해주세요.", "error");
     
     setConfirmDialog({
       isOpen: true,
-      message: `현재 화면에 검색/조회된 ${modalDetailedData.length}건의 판매 내역을 모두 삭제하시겠습니까?\n(이 작업은 되돌릴 수 없습니다!)`,
+      message: `선택하신 ${selectedSalesIds.length}건의 판매 내역을 정말 삭제하시겠습니까?\n(이 작업은 되돌릴 수 없습니다!)`,
       onConfirm: async () => {
-        const idsToDelete = modalDetailedData.map(s => s.id);
-        
         if (supabaseClient) {
-          const { error } = await supabaseClient.from('sales').delete().in('id', idsToDelete);
+          const { error } = await supabaseClient.from('sales').delete().in('id', selectedSalesIds);
           if (error) {
             showToast("DB 일괄 삭제 중 오류가 발생했습니다.", "error");
             setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
@@ -910,11 +913,20 @@ export default function App() {
           }
         }
         
-        setSales(prev => prev.filter(sale => !idsToDelete.includes(sale.id)));
-        showToast(`${idsToDelete.length}건이 일괄 삭제되었습니다.`, "success");
+        setSales(prev => prev.filter(sale => !selectedSalesIds.includes(sale.id)));
+        showToast(`${selectedSalesIds.length}건이 일괄 삭제되었습니다.`, "success");
+        setIsBulkDeleteMode(false);
+        setSelectedSalesIds([]);
         setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
       }
     });
+  };
+
+  // 💡 행(row) 터치/클릭 시 체크박스 토글
+  const toggleSaleSelection = (id) => {
+    setSelectedSalesIds(prev => 
+      prev.includes(id) ? prev.filter(selId => selId !== id) : [...prev, id]
+    );
   };
 
   const currentInventory = useMemo(() => {
@@ -1006,6 +1018,8 @@ export default function App() {
     setEditingSaleId(null); setEditForm(null); setEditingInvId(null); setInvEditForm(null);
     setBulkInvInput(''); setPendingRawData([]); setInvTab('stock'); setEditingMapId(null); setShowRawDataInput(false);
     setEditingRemitId(null); setRemitEditForm(null);
+    setIsBulkDeleteMode(false);
+    setSelectedSalesIds([]);
   };
 
   const exportToCSV = (data, type) => {
@@ -1115,6 +1129,15 @@ export default function App() {
     });
     return data;
   }, [maximizedView, sales, startDate, endDate, sortConfig, searchProduct, searchOption]);
+
+  // 💡 전체 선택/해제 토글 함수
+  const toggleAllSalesSelection = () => {
+    if (selectedSalesIds.length === modalDetailedData.length && modalDetailedData.length > 0) {
+      setSelectedSalesIds([]);
+    } else {
+      setSelectedSalesIds(modalDetailedData.map(sale => sale.id));
+    }
+  };
 
   const processedInventory = useMemo(() => {
     let data = [...currentInventory];
@@ -2087,12 +2110,32 @@ export default function App() {
                   </div>
                   
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
-                     <button onClick={handleBulkDeleteSales} className="flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 shadow-sm border border-red-200 dark:border-red-800 shrink-0">
-                       <Trash2 size={14} /> <span className="hidden sm:inline">조회된 전체 삭제</span><span className="sm:hidden">일괄 삭제</span>
-                     </button>
-                     <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700 shrink-0">
-                       <Download size={14} /> <span className="hidden sm:inline">CSV 내보내기</span><span className="sm:hidden">CSV</span>
-                     </button>
+                    {/* 💡 삭제 모드에 따라 버튼들이 스마트하게 변경됩니다! */}
+                    {isBulkDeleteMode ? (
+                      <>
+                        <button onClick={() => { setIsBulkDeleteMode(false); setSelectedSalesIds([]); }} className="px-3 py-2 rounded-lg text-xs font-bold transition-colors bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 whitespace-nowrap">
+                          취소
+                        </button>
+                        <button onClick={toggleAllSalesSelection} className="flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 shadow-sm border border-blue-200 dark:border-blue-800 shrink-0 whitespace-nowrap">
+                          <CheckCircle2 size={14} />
+                          <span className="hidden sm:inline">{selectedSalesIds.length === modalDetailedData.length && modalDetailedData.length > 0 ? "전체 해제" : "전체 선택"}</span>
+                          <span className="sm:hidden">{selectedSalesIds.length === modalDetailedData.length && modalDetailedData.length > 0 ? "해제" : "전체"}</span>
+                        </button>
+                        <button onClick={handleDeleteSelected} disabled={selectedSalesIds.length === 0} className="flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-red-500 text-white hover:bg-red-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:text-gray-500 shadow-sm shrink-0 whitespace-nowrap">
+                          <Trash2 size={14} />
+                          <span>{selectedSalesIds.length}개 삭제</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => setIsBulkDeleteMode(true)} className="flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 shadow-sm border border-red-200 dark:border-red-800 shrink-0 whitespace-nowrap">
+                          <Trash2 size={14} /> <span>일괄 삭제</span>
+                        </button>
+                        <button onClick={() => exportToCSV(modalDetailedData, 'sales')} className="flex px-3 py-2 rounded-lg text-xs font-bold transition-colors items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-700 shrink-0 whitespace-nowrap">
+                          <Download size={14} /> <span className="hidden sm:inline">CSV 내보내기</span><span className="sm:hidden">CSV</span>
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -2106,7 +2149,7 @@ export default function App() {
                         <th className="px-1 py-3 font-semibold cursor-pointer text-center w-[15%] sm:w-[10%] transition-colors truncate" onClick={() => requestSort('quantity')}><div className="flex items-center justify-center gap-1">수량 {getSortIcon('quantity')}</div></th>
                         <th className="px-1 sm:px-2 py-3 font-semibold cursor-pointer text-right w-[25%] sm:w-[15%] transition-colors truncate" onClick={() => requestSort('totalPrice')}><div className="flex items-center justify-end gap-1">금액 {getSortIcon('totalPrice')}</div></th>
                         <th className="px-3 py-3 font-semibold cursor-pointer hidden sm:table-cell w-[10%] transition-colors truncate" onClick={() => requestSort('note')}><div className="flex items-center gap-1">비고 {getSortIcon('note')}</div></th>
-                        <th className="px-1 pr-4 sm:pr-5 py-3 font-semibold text-center w-[18%] sm:w-[10%] truncate">관리</th>
+                        <th className="px-1 pr-4 sm:pr-5 py-3 font-semibold text-center w-[18%] sm:w-[10%] truncate">{isBulkDeleteMode ? '선택' : '관리'}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
@@ -2114,7 +2157,9 @@ export default function App() {
                         <tr><td colSpan="7" className="text-center text-gray-400 dark:text-gray-500 py-20 text-sm font-medium">해당 조건의 판매 내역이 없습니다.</td></tr>
                       ) : (
                         modalDetailedData.map((sale) => {
-                          if (editingSaleId === sale.id) {
+                          const isSelected = selectedSalesIds.includes(sale.id);
+
+                          if (editingSaleId === sale.id && !isBulkDeleteMode) {
                             return (
                               <tr key={sale.id} className="bg-orange-50/50 dark:bg-orange-900/10">
                                 <td className="px-2 sm:px-4 py-2 hidden sm:table-cell align-top"><div className="flex flex-col gap-1 w-full"><div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500"><CustomDatePicker startDate={editForm.date} onChange={(start) => setEditForm({...editForm, date: start})} wrapperClassName="w-full" className="w-full pl-2 py-1.5 text-xs bg-transparent outline-none truncate font-bold text-gray-900 dark:text-white" isRangeMode={false} /></div></div></td>
@@ -2157,7 +2202,11 @@ export default function App() {
                             );
                           }
                           return (
-                            <tr key={sale.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 group transition-colors">
+                            <tr 
+                              key={sale.id} 
+                              onClick={() => isBulkDeleteMode && toggleSaleSelection(sale.id)}
+                              className={`group transition-colors ${isBulkDeleteMode ? (isSelected ? 'bg-red-50 dark:bg-red-900/20 cursor-pointer' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40 cursor-pointer') : 'hover:bg-gray-50/80 dark:hover:bg-gray-800/40'}`}
+                            >
                               <td className="px-2 sm:px-4 py-2.5 sm:py-3.5 text-gray-500 dark:text-gray-400 font-medium text-[11px] sm:text-xs hidden sm:table-cell truncate">{sale.date}</td>
                               <td className="px-2 sm:px-3 py-2.5 sm:py-3.5">
                                 <div className="font-bold text-[11px] sm:text-sm text-gray-900 dark:text-white truncate">
@@ -2177,10 +2226,21 @@ export default function App() {
                                 {sale.note?.replace('[재고차감X]', '').trim() || '-'}
                               </td>
                               <td className="px-1 pr-3 sm:pr-5 py-2.5 sm:py-3.5 text-center whitespace-nowrap">
-                                <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => startEdit(sale)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
-                                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
-                                </div>
+                                {isBulkDeleteMode ? (
+                                  <div className="flex justify-center items-center h-full cursor-pointer">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={isSelected} 
+                                      readOnly
+                                      className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 rounded border-gray-300 focus:ring-red-500 transition-all pointer-events-none" 
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => startEdit(sale)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
+                                    <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           );
