@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Minus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, RefreshCw, TrendingUp, Download, RotateCcw, CheckCircle2, XCircle, Info, ChevronRight, Camera } from 'lucide-react';
-
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
 
@@ -266,7 +265,8 @@ export default function App() {
   const [invTab, setInvTab] = useState('stock'); 
 
   const [addMode, setAddMode] = useState('manual'); 
-  const [manualAddForm, setManualAddForm] = useState({ product: '', option: '', qty: 1, sellPrice: 0 });
+  // 💡 판매자(sellerName) 초기값 추가
+  const [manualAddForm, setManualAddForm] = useState({ product: '', option: '', sellerName: '', qty: 1, sellPrice: 0 });
 
   const [summaryTab, setSummaryTab] = useState('sales'); 
   const [settlementData, setSettlementData] = useState({ intermediate: 0, account: 0, cash: 0 });
@@ -295,6 +295,10 @@ export default function App() {
   // 💡 선택(일괄) 삭제 모드를 위한 상태 변수 추가
   const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
   const [selectedSalesIds, setSelectedSalesIds] = useState([]);
+
+  // 💡 판매자 빠른 지정 팝업 상태 추가
+  const [sellerPopup, setSellerPopup] = useState({ isOpen: false, invId: null, currentName: '' });
+  const [newSellerInput, setNewSellerInput] = useState('');
 
   useEffect(() => {
     if (!supabaseUrl || !supabaseKey) return;
@@ -418,6 +422,12 @@ export default function App() {
     if (!formData.product) return [];
     return inventoryData.filter(item => item.product === formData.product);
   }, [formData.product, inventoryData]);
+
+  // 💡 기존에 입력된 판매자 목록 자동 추출
+  const uniqueSellersList = useMemo(() => {
+    const sellers = inventoryData.map(item => item.sellerName).filter(name => name && name.trim() !== '');
+    return [...new Set(sellers)];
+  }, [inventoryData]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -614,7 +624,7 @@ export default function App() {
       showToast("고화질 이미지가 성공적으로 저장되었습니다!", "success");
     } catch (error) {
       console.error('Capture failed:', error);
-      showToast("이미 저장에 실패했습니다.", "error");
+      showToast("이미지 저장에 실패했습니다.", "error");
     } finally {
       ignoreElements.forEach(el => {
         el.style.opacity = '';
@@ -636,10 +646,17 @@ export default function App() {
     cancelEdit();
   };
 
+  // 💡 재고 수정 시 판매자(sellerName)도 함께 저장
   const saveInvEdit = async () => {
     if (!invEditForm.product || !invEditForm.option || invEditForm.qty < 0) return showToast("입력값을 확인해주세요.", "error");
     const { soldQty, remainQty, ...pureData } = invEditForm;
-    const updatedInv = { ...pureData, qty: Number(invEditForm.qty), originPrice: Number(invEditForm.originPrice) || 0, sellPrice: Number(invEditForm.sellPrice) || 0 };
+    const updatedInv = { 
+      ...pureData, 
+      qty: Number(invEditForm.qty), 
+      originPrice: Number(invEditForm.originPrice) || 0, 
+      sellPrice: Number(invEditForm.sellPrice) || 0,
+      sellerName: invEditForm.sellerName || ''
+    };
     if (supabaseClient) await supabaseClient.from('inventory').update(updatedInv).eq('id', updatedInv.id);
     setInventoryData(inventoryData.map(i => i.id === updatedInv.id ? updatedInv : i));
     showToast("재고가 수정되었습니다.", "success");
@@ -659,6 +676,7 @@ export default function App() {
     });
   };
 
+  // 💡 수동 재고 추가 시 판매자(sellerName)도 함께 추가
   const handleAddManualInv = async (e) => {
     e.preventDefault();
     if (!manualAddForm.product || !manualAddForm.option || manualAddForm.qty <= 0) return showToast("상품명, 옵션명, 수량을 확인해주세요.", "error");
@@ -667,6 +685,7 @@ export default function App() {
       id: Date.now() + Math.floor(Math.random() * 10000), 
       product: manualAddForm.product,
       option: manualAddForm.option,
+      sellerName: manualAddForm.sellerName || '',
       qty: Number(manualAddForm.qty),
       originPrice: 0,
       sellPrice: Number(manualAddForm.sellPrice) || 0
@@ -677,7 +696,12 @@ export default function App() {
     let dbItemToSave;
 
     if (existingIdx >= 0) {
-      newInv[existingIdx] = { ...newInv[existingIdx], qty: newInv[existingIdx].qty + newItem.qty, sellPrice: newItem.sellPrice };
+      newInv[existingIdx] = { 
+        ...newInv[existingIdx], 
+        qty: newInv[existingIdx].qty + newItem.qty, 
+        sellPrice: newItem.sellPrice,
+        sellerName: newItem.sellerName // 판매자 갱신
+      };
       const { soldQty, remainQty, ...pureData } = newInv[existingIdx];
       dbItemToSave = pureData;
     } else {
@@ -685,9 +709,16 @@ export default function App() {
       dbItemToSave = newItem;
     }
 
-    if (supabaseClient) await supabaseClient.from('inventory').upsert([dbItemToSave]);
+    if (supabaseClient) {
+      // 에러 캐치를 통해 Supabase에 sellerName 컬럼이 없는지 확인
+      const { error } = await supabaseClient.from('inventory').upsert([dbItemToSave]);
+      if (error) {
+        console.error(error);
+        return showToast("DB 저장 실패! (inventory 테이블에 sellerName 컬럼을 꼭 추가해주세요)", "error");
+      }
+    }
     setInventoryData(newInv);
-    setManualAddForm({ product: '', option: '', qty: 1, sellPrice: 0 });
+    setManualAddForm({ product: '', option: '', sellerName: '', qty: 1, sellPrice: 0 });
     showToast("재고가 추가되었습니다!", "success");
   };
 
@@ -825,7 +856,8 @@ export default function App() {
     for (const item of pendingRawData) {
       const key = `${item.mapTo.product}__|__${item.mapTo.option}`;
       if (!inventoryAddMap[key]) {
-        inventoryAddMap[key] = { product: item.mapTo.product, option: item.mapTo.option, qty: item.qty, sellPrice: Number(item.mapTo.sellPrice) || 0 };
+        // 일괄 붙여넣기 시 판매자는 빈칸 혹은 미지정 처리
+        inventoryAddMap[key] = { product: item.mapTo.product, option: item.mapTo.option, sellerName: '', qty: item.qty, sellPrice: Number(item.mapTo.sellPrice) || 0 };
       } else {
         inventoryAddMap[key].qty += item.qty;
       }
@@ -844,7 +876,7 @@ export default function App() {
          const { soldQty, remainQty, ...pureData } = newInv[invIdx];
          dbItemToSave = pureData;
       } else {
-         dbItemToSave = { id: Date.now() + Math.floor(Math.random() * 10000) + i, product: aggItem.product, option: aggItem.option, qty: aggItem.qty, originPrice: 0, sellPrice: aggItem.sellPrice };
+         dbItemToSave = { id: Date.now() + Math.floor(Math.random() * 10000) + i, product: aggItem.product, option: aggItem.option, sellerName: '', qty: aggItem.qty, originPrice: 0, sellPrice: aggItem.sellPrice };
          newInv.push(dbItemToSave);
       }
       dbInventoryToUpsert.push(dbItemToSave);
@@ -855,7 +887,7 @@ export default function App() {
         await supabaseClient.from('option_mappings').upsert(dbMappingsToUpsert);
         await supabaseClient.from('inventory').upsert(dbInventoryToUpsert);
       } catch(err) {
-        return showToast("DB 일괄 저장에 실패했습니다.", "error");
+        return showToast("DB 일괄 저장에 실패했습니다. (inventory 테이블 컬럼 확인 필요)", "error");
       }
     }
 
@@ -896,7 +928,6 @@ export default function App() {
     });
   };
 
-  // 💡 선택된 항목들을 일괄 삭제하는 기능으로 업그레이드
   const handleDeleteSelected = async () => {
     if (selectedSalesIds.length === 0) return showToast("삭제할 데이터를 선택해주세요.", "error");
     
@@ -922,11 +953,33 @@ export default function App() {
     });
   };
 
-  // 💡 행(row) 터치/클릭 시 체크박스 토글
   const toggleSaleSelection = (id) => {
     setSelectedSalesIds(prev => 
       prev.includes(id) ? prev.filter(selId => selId !== id) : [...prev, id]
     );
+  };
+
+  // 💡 판매자 빠른 지정 핸들러 추가
+  const handleQuickAssignSeller = async (sellerName) => {
+    if (!sellerPopup.invId) return;
+
+    const targetInv = inventoryData.find(i => i.id === sellerPopup.invId);
+    if (!targetInv) return;
+
+    const updatedInv = { ...targetInv, sellerName: sellerName.trim() };
+    
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from('inventory').update({ sellerName: updatedInv.sellerName }).eq('id', updatedInv.id);
+      if (error) {
+        console.error(error);
+        return showToast("판매자 지정 중 오류가 발생했습니다.", "error");
+      }
+    }
+
+    setInventoryData(prev => prev.map(i => i.id === updatedInv.id ? updatedInv : i));
+    showToast(sellerName ? "판매자가 지정되었습니다." : "판매자 지정이 해제되었습니다.", "success");
+    setSellerPopup({ isOpen: false, invId: null, currentName: '' });
+    setNewSellerInput('');
   };
 
   const currentInventory = useMemo(() => {
@@ -1032,9 +1085,10 @@ export default function App() {
         csvContent += `"${row.date}","${row.product}","${row.option}",${row.quantity},${row.totalPrice},"${row.note || ''}"\n`;
       });
     } else if (type === 'inventory') {
-      csvContent += '상품명,옵션명,총수량,남은수량,판매금액\n';
+      // 💡 엑셀 내보내기에도 판매자(당근 계정) 항목 추가
+      csvContent += '상품명,옵션명,판매자,총수량,남은수량,판매금액\n';
       data.forEach(row => {
-        csvContent += `"${row.product}","${row.option}",${row.qty},${row.remainQty},${row.sellPrice}\n`;
+        csvContent += `"${row.product}","${row.option}","${row.sellerName || '미지정'}",${row.qty},${row.remainQty},${row.sellPrice}\n`;
       });
     }
 
@@ -1130,7 +1184,6 @@ export default function App() {
     return data;
   }, [maximizedView, sales, startDate, endDate, sortConfig, searchProduct, searchOption]);
 
-  // 💡 전체 선택/해제 토글 함수
   const toggleAllSalesSelection = () => {
     if (selectedSalesIds.length === modalDetailedData.length && modalDetailedData.length > 0) {
       setSelectedSalesIds([]);
@@ -1688,12 +1741,13 @@ export default function App() {
               </div>
               <div className="flex-1 overflow-x-hidden overflow-y-auto min-h-0 relative">
                 <table className="w-full text-sm text-left table-fixed">
-                  <thead className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 sticky top-0 shadow-sm border-b border-gray-100 dark:border-gray-800">
+                  {/* 💡 대시보드 실시간 재고 현황: 판매자 추가 및 레이아웃 재배치 */}
+                  <thead className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 sticky top-0 shadow-sm border-b border-gray-100 dark:border-gray-800 z-10">
                     <tr>
-                      <th className="pl-4 sm:pl-5 pr-2 py-3.5 font-semibold w-[45%] sm:w-[40%] truncate">상품명 <span className="sm:hidden font-normal text-gray-400 ml-1">/ 옵션</span></th>
-                      <th className="px-4 py-3.5 font-semibold hidden sm:table-cell sm:w-[25%] truncate">옵션명</th>
-                      <th className="px-2 py-3.5 font-semibold text-center w-[25%] sm:w-[15%] truncate">총 수량</th>
-                      <th className="pl-2 pr-5 sm:pr-6 py-3.5 font-semibold text-center w-[30%] sm:w-[20%] truncate">남은 수량</th>
+                      <th className="pl-4 sm:pl-5 pr-2 py-3.5 font-semibold w-[35%] sm:w-[35%] truncate">상품/옵션명</th>
+                      <th className="px-2 py-3.5 font-semibold text-center w-[25%] sm:w-[20%] truncate">판매자</th>
+                      <th className="px-2 py-3.5 font-semibold text-right w-[20%] sm:w-[25%] truncate">판매 금액</th>
+                      <th className="pl-2 pr-5 sm:pr-6 py-3.5 font-semibold text-center w-[20%] sm:w-[20%] truncate">수량 <span className="hidden sm:inline text-[10px] font-normal ml-0.5">(남음/총)</span></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -1709,14 +1763,28 @@ export default function App() {
                     ) : (
                       currentInventory.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
-                          <td className="pl-4 sm:pl-5 pr-2 py-3">
-                            <div className="font-bold text-gray-900 dark:text-white truncate">{item.product}</div>
-                            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden truncate">{item.option}</div>
+                          <td className="pl-4 sm:pl-5 pr-2 py-3 align-middle">
+                            <div className="font-bold text-gray-900 dark:text-white truncate text-xs sm:text-sm">{item.product}</div>
+                            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 truncate">{item.option}</div>
                           </td>
-                          <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm hidden sm:table-cell truncate">{item.option}</td>
-                          <td className="px-2 py-3 text-center font-semibold text-gray-600 dark:text-gray-400 truncate">{Number(item.qty).toLocaleString()}</td>
-                          <td className="pl-2 pr-5 sm:pr-6 py-3 text-center">
-                            <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md font-black text-xs sm:text-sm ${item.remainQty === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-orange-500'}`}>{Number(item.remainQty).toLocaleString()}</span>
+                          <td className="px-2 py-3 text-center align-middle">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setSellerPopup({ isOpen: true, invId: item.id, currentName: item.sellerName || '' }); setNewSellerInput(''); }}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-xs font-bold max-w-full cursor-pointer transition-colors shadow-sm ${item.sellerName ? 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/50' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700'}`}
+                              title="판매자 지정"
+                            >
+                              <Carrot size={10} className={`shrink-0 ${item.sellerName ? 'text-orange-500' : 'text-gray-400'}`} />
+                              <span className="truncate">{item.sellerName || '미지정'}</span>
+                            </button>
+                          </td>
+                          <td className="px-2 py-3 text-right align-middle">
+                            <div className="font-bold text-[11px] sm:text-sm text-gray-900 dark:text-white truncate">{Number(item.sellPrice).toLocaleString()}원</div>
+                          </td>
+                          <td className="pl-2 pr-5 sm:pr-6 py-2.5 text-center align-middle">
+                            <div className="flex flex-col items-center justify-center gap-1">
+                              <span className={`inline-flex items-center justify-center px-2 py-1 rounded-md font-black text-[11px] sm:text-sm leading-none ${item.remainQty === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-800/50'}`}>{Number(item.remainQty).toLocaleString()}개</span>
+                              <span className="text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-500 font-semibold leading-none">총 {Number(item.qty).toLocaleString()}</span>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1725,10 +1793,15 @@ export default function App() {
                   </tbody>
                   <tfoot className="bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 font-bold text-gray-800 dark:text-gray-200 sticky bottom-0">
                     <tr>
-                      <td className="sm:hidden pl-4 pr-2 py-4 text-center text-xs truncate">합계</td>
-                      <td colSpan="2" className="hidden sm:table-cell px-4 py-4 text-center text-xs truncate">전체 합계</td>
-                      <td className="px-2 py-4 text-center text-base truncate">{Number(currentInventory.reduce((acc, curr) => acc + curr.qty, 0)).toLocaleString()}</td>
-                      <td className="pl-2 pr-5 sm:pr-6 py-4 text-center text-orange-500 text-lg sm:text-xl font-black truncate">{Number(currentInventory.reduce((acc, curr) => acc + curr.remainQty, 0)).toLocaleString()}</td>
+                      <td className="sm:hidden pl-4 pr-2 py-3 text-center text-xs truncate align-middle">합계</td>
+                      <td colSpan="2" className="hidden sm:table-cell px-4 py-3 text-center text-xs truncate align-middle">전체 합계</td>
+                      <td className="px-2 py-3 text-right text-xs text-gray-400 align-middle">-</td>
+                      <td className="pl-2 pr-5 sm:pr-6 py-2.5 text-center align-middle">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <span className="font-black text-orange-500 text-sm sm:text-base leading-none">{Number(currentInventory.reduce((acc, curr) => acc + curr.remainQty, 0)).toLocaleString()}개</span>
+                          <span className="text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-500 font-semibold leading-none">총 {Number(currentInventory.reduce((acc, curr) => acc + curr.qty, 0)).toLocaleString()}</span>
+                        </div>
+                      </td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1825,21 +1898,27 @@ export default function App() {
                             <input list="globalOptionList" value={manualAddForm.option} onChange={e => setManualAddForm({...manualAddForm, option: e.target.value})} className="w-full border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg px-3 py-2 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="직접 입력 또는 선택" required />
                           </div>
                           
-                          <div className="w-full md:w-[130px]">
+                          {/* 💡 수동 재고 추가 창: 판매자(담당자) 입력 필드 추가 */}
+                          <div className="w-full md:w-[100px]">
+                            <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">판매자</label>
+                            <input type="text" value={manualAddForm.sellerName} onChange={e => setManualAddForm({...manualAddForm, sellerName: e.target.value})} className="w-full border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg px-3 py-2 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none transition-shadow" placeholder="이름" />
+                          </div>
+
+                          <div className="w-full md:w-[100px]">
                             <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">수량</label>
                             <div className="flex items-center w-full border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-500 bg-transparent text-gray-900 dark:text-white transition-shadow">
-                              <button type="button" onClick={() => { const q = Number(manualAddForm.qty) || 0; if (q > 1) setManualAddForm({...manualAddForm, qty: q - 1 }); }} className="px-3 py-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-r border-gray-300 dark:border-gray-700 focus:outline-none"><Minus size={14} strokeWidth={2.5}/></button>
+                              <button type="button" onClick={() => { const q = Number(manualAddForm.qty) || 0; if (q > 1) setManualAddForm({...manualAddForm, qty: q - 1 }); }} className="px-2 sm:px-3 py-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-r border-gray-300 dark:border-gray-700 focus:outline-none"><Minus size={14} strokeWidth={2.5}/></button>
                               <FormattedNumberInput name="qty" value={manualAddForm.qty} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setManualAddForm({...manualAddForm, qty: Number(val)}); }} className="flex-1 w-full text-center text-xs sm:text-sm font-black bg-transparent outline-none py-2" required={true} />
-                              <button type="button" onClick={() => { const q = Number(manualAddForm.qty) || 0; setManualAddForm({...manualAddForm, qty: q + 1 }); }} className="px-3 py-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-l border-gray-300 dark:border-gray-700 focus:outline-none"><Plus size={14} strokeWidth={2.5}/></button>
+                              <button type="button" onClick={() => { const q = Number(manualAddForm.qty) || 0; setManualAddForm({...manualAddForm, qty: q + 1 }); }} className="px-2 sm:px-3 py-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-l border-gray-300 dark:border-gray-700 focus:outline-none"><Plus size={14} strokeWidth={2.5}/></button>
                             </div>
                           </div>
 
-                          <div className="w-full md:w-[150px]">
+                          <div className="w-full md:w-[120px]">
                             <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">판매 금액 (원)</label>
                             <FormattedNumberInput name="sellPrice" value={manualAddForm.sellPrice} onChange={e => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); setManualAddForm({...manualAddForm, sellPrice: Number(rawValue)}); }} className="w-full border border-gray-300 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white rounded-lg px-3 py-2 text-xs sm:text-sm font-black focus:ring-2 focus:ring-orange-500 outline-none text-right transition-shadow" placeholder="0" />
                           </div>
 
-                          <button type="submit" className="w-full md:w-auto bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-8 py-2.5 transition-colors shadow-sm flex items-center justify-center h-[42px] shrink-0 mt-2 md:mt-0 whitespace-nowrap">
+                          <button type="submit" className="w-full md:w-auto bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg px-6 py-2.5 transition-colors shadow-sm flex items-center justify-center h-[42px] shrink-0 mt-2 md:mt-0 whitespace-nowrap">
                             <Plus size={18} className="mr-1"/> 추가
                           </button>
                         </form>
@@ -1856,19 +1935,19 @@ export default function App() {
 
                     <div className="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-gray-900 relative">
                       <table className="w-full text-sm text-left table-fixed">
+                        {/* 💡 모달 재고 관리: 판매자 추가 및 레이아웃 재배치 */}
                         <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 shadow-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 z-10 text-[11px] sm:text-xs">
                           <tr>
-                            <th className="px-3 sm:px-4 py-3 font-semibold w-[42%] sm:w-[30%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors truncate" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품명 <span className="sm:hidden font-normal text-gray-400">/ 정보</span> {getSortIcon('product')}</div></th>
-                            <th className="px-4 py-3 font-semibold w-[20%] hidden sm:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors truncate" onClick={() => requestSort('option')}><div className="flex items-center gap-1">옵션명 {getSortIcon('option')}</div></th>
-                            <th className="px-1 py-3 font-semibold text-center w-[15%] sm:w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors truncate" onClick={() => requestSort('qty')}><div className="flex items-center justify-center gap-1">총 수량 {getSortIcon('qty')}</div></th>
-                            <th className="px-2 py-3 font-semibold text-right hidden sm:table-cell w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors truncate" onClick={() => requestSort('sellPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('sellPrice')}</div></th>
-                            <th className="px-1 py-3 font-semibold text-center w-[20%] sm:w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors truncate" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">남은 수량 {getSortIcon('remainQty')}</div></th>
-                            <th className="px-1 pr-4 sm:pr-5 py-3 font-semibold text-center w-[23%] sm:w-[10%] truncate">관리</th>
+                            <th className="px-3 sm:px-4 py-3 font-semibold w-[30%] sm:w-[30%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors truncate" onClick={() => requestSort('product')}><div className="flex items-center gap-1">상품/옵션명 {getSortIcon('product')}</div></th>
+                            <th className="px-1 sm:px-2 py-3 font-semibold text-center w-[20%] sm:w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors truncate" onClick={() => requestSort('sellerName')}><div className="flex items-center justify-center gap-1">판매자 {getSortIcon('sellerName')}</div></th>
+                            <th className="px-1 sm:px-2 py-3 font-semibold text-right w-[20%] sm:w-[20%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors truncate" onClick={() => requestSort('sellPrice')}><div className="flex items-center justify-end gap-1">판매 금액 {getSortIcon('sellPrice')}</div></th>
+                            <th className="px-1 py-3 font-semibold text-center w-[15%] sm:w-[20%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none transition-colors truncate" onClick={() => requestSort('remainQty')}><div className="flex items-center justify-center gap-1">수량<span className="hidden sm:inline font-normal text-[10px] ml-0.5">(남음/총)</span> {getSortIcon('remainQty')}</div></th>
+                            <th className="px-1 pr-4 sm:pr-5 py-3 font-semibold text-center w-[15%] sm:w-[15%] truncate">관리</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
                           {processedInventory.length === 0 ? (
-                            <tr><td colSpan="6" className="text-center text-gray-400 py-20 text-sm font-medium whitespace-nowrap">해당 조건의 재고 데이터가 없습니다.</td></tr>
+                            <tr><td colSpan="5" className="text-center text-gray-400 py-20 text-sm font-medium whitespace-nowrap">해당 조건의 재고 데이터가 없습니다.</td></tr>
                           ) : (
                             processedInventory.map((item) => {
                               if (editingInvId === item.id) {
@@ -1877,28 +1956,26 @@ export default function App() {
                                     <td className="px-2 sm:px-3 py-2 align-top">
                                       <div className="flex flex-col gap-1 w-full">
                                         <input type="text" value={invEditForm.product} onChange={e => setInvEditForm({...invEditForm, product: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="상품명" />
-                                        <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden" placeholder="옵션명" />
-                                        <FormattedNumberInput value={invEditForm.sellPrice} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(val)}); }} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none sm:hidden font-bold text-right" placeholder="판매 금액" />
+                                        <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" />
                                       </div>
                                     </td>
-                                    <td className="px-3 py-2 hidden sm:table-cell align-top">
+                                    <td className="px-1 sm:px-2 py-2 align-top">
                                       <div className="flex flex-col gap-1 w-full">
-                                        <input type="text" value={invEditForm.option} onChange={e => setInvEditForm({...invEditForm, option: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="옵션명" />
+                                        <input type="text" value={invEditForm.sellerName || ''} onChange={e => setInvEditForm({...invEditForm, sellerName: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-1.5 sm:px-2 text-xs sm:text-sm text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="판매자" />
+                                      </div>
+                                    </td>
+                                    <td className="px-1 sm:px-2 py-2 text-right align-top">
+                                      <div className="flex flex-col gap-1 w-full">
+                                        <FormattedNumberInput value={invEditForm.sellPrice} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(val)}); }} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-1.5 sm:px-2 text-xs sm:text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
                                       </div>
                                     </td>
                                     <td className="px-1 py-2 text-center align-top">
-                                      <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto sm:border sm:border-gray-300 dark:sm:border-gray-600 rounded overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
-                                         <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; if (q > 0) setInvEditForm({...invEditForm, qty: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
+                                      <div className="flex items-center justify-center w-full h-8 mx-auto sm:border sm:border-gray-300 dark:sm:border-gray-600 rounded overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
+                                         <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; if (q > 0) setInvEditForm({...invEditForm, qty: q - 1}); }} className="hidden sm:flex px-1.5 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
                                          <FormattedNumberInput value={invEditForm.qty} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, qty: Number(val)}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" />
-                                         <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; setInvEditForm({...invEditForm, qty: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
+                                         <button type="button" onClick={() => { const q = Number(invEditForm.qty) || 0; setInvEditForm({...invEditForm, qty: q + 1}); }} className="hidden sm:flex px-1.5 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
                                       </div>
                                     </td>
-                                    <td className="px-2 py-2 text-right hidden sm:table-cell align-top">
-                                      <div className="flex flex-col gap-1 w-full">
-                                        <FormattedNumberInput value={invEditForm.sellPrice} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setInvEditForm({...invEditForm, sellPrice: Number(val)}); }} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-2 text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
-                                      </div>
-                                    </td>
-                                    <td className="px-1 py-2 text-center text-gray-400 text-[10px] sm:text-xs font-medium align-top pt-3">자동 계산</td>
                                     <td className="px-1 pr-3 sm:pr-4 py-2 text-center align-top pt-3">
                                       <div className="flex justify-center items-center gap-1 sm:gap-1.5">
                                         <button onClick={saveInvEdit} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 transition-colors shadow-sm"><Check size={14} className="sm:w-4 sm:h-4" /></button>
@@ -1910,18 +1987,30 @@ export default function App() {
                               }
                               return (
                                 <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 group transition-colors">
-                                  <td className="px-3 sm:px-4 py-2.5 sm:py-3">
+                                  <td className="px-3 sm:px-4 py-2.5 sm:py-3 align-middle">
                                     <div className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white truncate">{item.product}</div>
-                                    <div className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 mt-1 sm:hidden truncate">{item.option}</div>
-                                    <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 sm:hidden mt-0.5 truncate">{Number(item.sellPrice).toLocaleString()}원</div>
+                                    <div className="text-[11px] sm:text-[11px] text-gray-500 dark:text-gray-400 mt-1 truncate">{item.option}</div>
                                   </td>
-                                  <td className="px-4 py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell truncate">{item.option}</td>
-                                  <td className="px-1 py-2.5 sm:py-3 text-center font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-200 truncate">{Number(item.qty).toLocaleString()}</td>
-                                  <td className="px-2 py-3 text-right font-black text-xs sm:text-sm text-gray-900 dark:text-white hidden sm:table-cell truncate">{Number(item.sellPrice).toLocaleString()}원</td>
-                                  <td className="px-1 py-2.5 sm:py-3 text-center truncate">
-                                    <span className={`inline-flex items-center justify-center px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md font-black text-[10px] sm:text-sm ${item.remainQty === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-orange-500'}`}>{Number(item.remainQty).toLocaleString()}</span>
+                                  <td className="px-1 sm:px-2 py-2.5 sm:py-3 text-center align-middle">
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); setSellerPopup({ isOpen: true, invId: item.id, currentName: item.sellerName || '' }); setNewSellerInput(''); }}
+                                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-xs font-bold max-w-full cursor-pointer transition-colors shadow-sm ${item.sellerName ? 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/50' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700'}`}
+                                      title="판매자 지정"
+                                    >
+                                      <Carrot size={10} className={`shrink-0 ${item.sellerName ? 'text-orange-500' : 'text-gray-400'}`} />
+                                      <span className="truncate">{item.sellerName || '미지정'}</span>
+                                    </button>
                                   </td>
-                                  <td className="px-1 pr-3 sm:pr-4 py-2.5 sm:py-3 text-center truncate">
+                                  <td className="px-1 sm:px-2 py-2.5 sm:py-3 text-right align-middle">
+                                    <div className="font-black text-[11px] sm:text-sm text-gray-900 dark:text-white truncate">{Number(item.sellPrice).toLocaleString()}원</div>
+                                  </td>
+                                  <td className="px-1 py-2.5 sm:py-3 text-center align-middle">
+                                    <div className="flex flex-col items-center justify-center gap-1">
+                                      <span className={`inline-flex items-center justify-center px-1.5 sm:px-2.5 py-1 rounded-md font-black text-[11px] sm:text-sm leading-none ${item.remainQty === 0 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-800/50'}`}>{Number(item.remainQty).toLocaleString()}개</span>
+                                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-semibold leading-none">총 {Number(item.qty).toLocaleString()}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-1 pr-3 sm:pr-4 py-2.5 sm:py-3 text-center align-middle truncate">
                                     <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                       <button onClick={() => startInvEdit(item)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="재고 수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
                                       <button onClick={() => handleDeleteInv(item.id)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1 sm:p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="품목 삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
@@ -1931,7 +2020,7 @@ export default function App() {
                               );
                             })
                           )}
-                          <tr className="h-full pointer-events-none"><td colSpan="6" className="p-0 border-0"></td></tr>
+                          <tr className="h-full pointer-events-none"><td colSpan="5" className="p-0 border-0"></td></tr>
                         </tbody>
                       </table>
                     </div>
@@ -2110,7 +2199,6 @@ export default function App() {
                   </div>
                   
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
-                    {/* 💡 삭제 모드에 따라 버튼들이 스마트하게 변경됩니다! */}
                     {isBulkDeleteMode ? (
                       <>
                         <button onClick={() => { setIsBulkDeleteMode(false); setSelectedSalesIds([]); }} className="px-3 py-2 rounded-lg text-xs font-bold transition-colors bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 whitespace-nowrap">
@@ -2225,20 +2313,20 @@ export default function App() {
                                 {sale.note?.includes('[재고차감X]') && <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] px-1.5 py-0.5 rounded mr-1 font-bold whitespace-nowrap">재고유지</span>}
                                 {sale.note?.replace('[재고차감X]', '').trim() || '-'}
                               </td>
-                              <td className="px-1 pr-3 sm:pr-5 py-2.5 sm:py-3.5 text-center whitespace-nowrap">
+                              <td className="px-1 pr-3 sm:pr-5 py-2.5 sm:py-3.5 text-center whitespace-nowrap" onClick={(e) => isBulkDeleteMode && e.stopPropagation()}>
                                 {isBulkDeleteMode ? (
-                                  <div className="flex justify-center items-center h-full cursor-pointer">
+                                  <div className="flex justify-center items-center h-full cursor-pointer" onClick={() => toggleSaleSelection(sale.id)}>
                                     <input 
                                       type="checkbox" 
                                       checked={isSelected} 
-                                      readOnly
-                                      className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 rounded border-gray-300 focus:ring-red-500 transition-all pointer-events-none" 
+                                      onChange={() => toggleSaleSelection(sale.id)} 
+                                      className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 rounded border-gray-300 focus:ring-red-500 cursor-pointer transition-all" 
                                     />
                                   </div>
                                 ) : (
                                   <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => startEdit(sale)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
-                                    <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); startEdit(sale); }} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 sm:p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={14} className="sm:w-4 sm:h-4" /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="삭제"><Trash2 size={14} className="sm:w-4 sm:h-4" /></button>
                                   </div>
                                 )}
                               </td>
@@ -2396,6 +2484,75 @@ export default function App() {
             <div className="px-5 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 flex justify-between items-center shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
                <span className="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400">총 누적 송금액</span>
                <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{Number(settlementData.intermediate).toLocaleString()}<span className="text-sm font-bold ml-1 text-gray-500">원</span></span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- 판매자 빠른 지정 모달 (Bottom Sheet Style) --- */}
+      {sellerPopup.isOpen && (
+        <div className="fixed inset-0 z-[130] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 transition-all">
+          <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-t sm:border border-gray-200 dark:border-gray-700 animate-[slide-up_0.2s_ease-out] sm:animate-none">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+              <h3 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <Carrot size={18} className="text-orange-500" /> 판매자 빠른 지정
+              </h3>
+              <button onClick={() => setSellerPopup({ isOpen: false, invId: null, currentName: '' })} className="p-1 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-5 flex flex-col gap-5 max-h-[60vh] overflow-y-auto">
+              {uniqueSellersList.length > 0 && (
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-2.5">기존 판매자 중에서 선택</label>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueSellersList.map(seller => (
+                      <button 
+                        key={seller}
+                        onClick={() => handleQuickAssignSeller(seller)}
+                        className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors border shadow-sm ${sellerPopup.currentName === seller ? 'bg-orange-50 border-orange-200 text-orange-600 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400' : 'bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}
+                      >
+                        {seller}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-2.5">새 판매자 직접 입력</label>
+                <form 
+                  onSubmit={(e) => { e.preventDefault(); handleQuickAssignSeller(newSellerInput); }}
+                  className="flex gap-2"
+                >
+                  <input 
+                    type="text" 
+                    value={newSellerInput} 
+                    onChange={e => setNewSellerInput(e.target.value)} 
+                    placeholder="이름 입력 (예: 홍길동)" 
+                    className="flex-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none shadow-sm" 
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={!newSellerInput.trim()}
+                    className="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:bg-gray-300 dark:disabled:bg-gray-800 text-white font-bold px-4 rounded-lg transition-colors text-sm shadow-sm"
+                  >
+                    지정
+                  </button>
+                </form>
+              </div>
+
+              {sellerPopup.currentName && (
+                <div className="pt-3 border-t border-gray-100 dark:border-gray-800 mt-2">
+                  <button 
+                    onClick={() => handleQuickAssignSeller('')}
+                    className="w-full py-2.5 rounded-lg text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-900/50"
+                  >
+                    판매자 미지정 상태로 변경
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
