@@ -188,7 +188,7 @@ const CustomDatePicker = ({ startDate, endDate, onChange, className, wrapperClas
   );
 };
 
-// 💡 스마트 숫자 입력기 컴포넌트 (중간 숫자 삭제 버그 방지)
+// 💡 스마트 숫자 입력기 컴포넌트 (중간 숫자 삭제 버그 방지 및 0원 허용)
 const FormattedNumberInput = ({ value, onChange, onBlur, className, placeholder, name, required }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState('');
@@ -196,7 +196,7 @@ const FormattedNumberInput = ({ value, onChange, onBlur, className, placeholder,
   const handleFocus = (e) => {
     setIsFocused(true);
     const numericValue = Number(String(value).replace(/[^0-9]/g, ''));
-    setLocalValue(numericValue === 0 ? '' : String(numericValue));
+    setLocalValue(String(numericValue));
   };
 
   const handleBlur = (e) => {
@@ -215,14 +215,14 @@ const FormattedNumberInput = ({ value, onChange, onBlur, className, placeholder,
       const numValue = Number(String(value).replace(/[^0-9]/g, ''));
       const numLocal = Number(localValue.replace(/[^0-9]/g, ''));
       if (numValue !== numLocal) {
-        setLocalValue(numValue === 0 ? '' : String(numValue));
+        setLocalValue(String(numValue)); 
       }
     }
   }, [value, isFocused]);
 
   const displayValue = isFocused 
     ? localValue 
-    : (Number(value) === 0 ? '' : Number(value).toLocaleString());
+    : (value === '' || value === null || value === undefined ? '' : Number(value).toLocaleString());
 
   return (
     <input
@@ -336,7 +336,6 @@ export default function App() {
          });
       }
 
-      // 송금 내역 불러오기
       const { data: remitData } = await supabaseClient.from('remittance_history').select('*').order('date', { ascending: false });
       if (remitData) {
           setRemittanceHistory(remitData);
@@ -447,8 +446,8 @@ export default function App() {
       product: formData.product,
       option: formData.option,
       quantity: Number(formData.quantity),
-      price: Math.round(Number(formData.price) / Number(formData.quantity)), 
-      totalPrice: Number(formData.price), 
+      price: formData.price > 0 ? Math.round(Number(formData.price) / Number(formData.quantity)) : 0, 
+      totalPrice: Number(formData.price) || 0, 
       note: finalNote
     };
 
@@ -494,7 +493,7 @@ export default function App() {
              product,
              option,
              quantity,
-             price: Math.round(totalPrice / quantity),
+             price: totalPrice > 0 ? Math.round(totalPrice / quantity) : 0,
              totalPrice,
              note
            });
@@ -558,20 +557,17 @@ export default function App() {
     });
   };
 
-  // 💡 캡처 엔진 최적화: 버튼 숨김, 스크롤바 제거, 호버 효과 방지
+  // 💡 고화질 캡처 엔진 (html-to-image)
   const handleCaptureSalesSummary = async () => {
     if (!salesSummaryRef.current) return;
 
     const captureTarget = salesSummaryRef.current;
-    // 숨길 버튼 찾기
     const ignoreElements = captureTarget.querySelectorAll('[data-capture-ignore="true"]');
-    // 스크롤바가 생기는 영역들 찾기
     const scrollableDivs = captureTarget.querySelectorAll('.overflow-y-auto, .overflow-x-auto, .overflow-auto');
 
     try {
       showToast("고화질 이미지를 생성하는 중입니다...", "info");
       
-      // 1. 스크롤바를 캡처 화면에서만 임시로 완전히 없애는 CSS 주입
       const style = document.createElement('style');
       style.id = 'capture-temp-style';
       style.innerHTML = `
@@ -585,17 +581,14 @@ export default function App() {
       `;
       document.head.appendChild(style);
       
-      // 2. 레이아웃 붕괴를 막기 위해 버튼을 '투명'하게만 만듦
       ignoreElements.forEach(el => {
         el.style.opacity = '0';
       });
       
-      // 3. 스크롤 영역에 임시 스크롤바 숨김 클래스 적용
       scrollableDivs.forEach(div => {
         div.classList.add('capture-hide-scrollbar');
       });
 
-      // 💡 투명도와 스크롤바 숨김이 화면에 반영될 수 있도록 0.15초 대기
       await new Promise(resolve => setTimeout(resolve, 150));
       
       const htmlToImage = await import('https://esm.sh/html-to-image');
@@ -603,9 +596,9 @@ export default function App() {
       
       const dataUrl = await htmlToImage.toPng(captureTarget, {
         backgroundColor: isDark ? '#111827' : '#ffffff',
-        pixelRatio: 2, // 고해상도 유지
+        pixelRatio: 2, 
         style: {
-          pointerEvents: 'none' // 캡처 순간의 마우스 호버(Hover) 효과 완벽 차단
+          pointerEvents: 'none' 
         }
       });
       
@@ -619,7 +612,6 @@ export default function App() {
       console.error('Capture failed:', error);
       showToast("이미지 저장에 실패했습니다.", "error");
     } finally {
-      // 4. 캡처가 끝나면 모든 것을 사용자가 보던 원래 상태로 완벽히 복구!
       ignoreElements.forEach(el => {
         el.style.opacity = '';
       });
@@ -1040,7 +1032,7 @@ export default function App() {
     showToast("CSV 다운로드가 완료되었습니다.", "success");
   };
 
-  const startEdit = (sale) => { setEditingSaleId(sale.id); setEditForm({ ...sale, price: sale.totalPrice }); };
+  const startEdit = (sale) => { setEditingSaleId(sale.id); setEditForm({ ...sale, price: sale.quantity > 0 ? Math.round(sale.totalPrice / sale.quantity) : 0 }); };
   const cancelEdit = () => { setEditingSaleId(null); setEditForm(null); };
   const startInvEdit = (item) => { setEditingInvId(item.id); setInvEditForm({ ...item }); };
   const cancelInvEdit = () => { setEditingInvId(null); setInvEditForm(null); };
@@ -1214,7 +1206,7 @@ export default function App() {
 
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* --- 새 판매 등록 (엑셀 일괄 추가 통합) --- */}
+          
           <div className="lg:col-span-4">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col transition-colors">
               <div className="bg-gray-50/80 dark:bg-gray-800/50 px-5 py-4 border-b border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white flex flex-col gap-3 shrink-0">
@@ -1276,7 +1268,7 @@ export default function App() {
                       <div>
                         <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">판매 금액 (원)</label>
                         <div className="flex items-center w-full border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden transition-colors shadow-sm bg-white dark:bg-gray-800 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
-                          <FormattedNumberInput name="price" value={formData.price} onChange={(e) => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'price', value: Number(rawValue) } }); }} className="flex-1 w-full p-2.5 text-sm font-bold outline-none bg-transparent text-gray-900 dark:text-white text-right" placeholder="0" required={true} />
+                          <FormattedNumberInput name="price" value={formData.price} onChange={(e) => { const rawValue = e.target.value.replace(/[^0-9]/g, ''); handleFormChange({ target: { name: 'price', value: Number(rawValue) } }); }} className="flex-1 w-full p-2.5 text-sm font-bold outline-none bg-transparent text-gray-900 dark:text-white text-right" placeholder="0" min="0" />
                         </div>
                       </div>
                     </div>
@@ -1338,7 +1330,6 @@ export default function App() {
 
               {summaryTab === 'sales' && (
                 <>
-                  {/* 💡 이전의 차분한 무채색 디자인으로 복구되었습니다 */}
                   <div className="grid grid-cols-2 md:grid-cols-5 border-b border-gray-100 dark:border-gray-800 text-center bg-white dark:bg-gray-900 shrink-0">
                     <div className="p-4 border-r border-b md:border-b-0 border-gray-100 dark:border-gray-800 flex flex-col justify-center">
                       <div className="text-[11px] md:text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 whitespace-nowrap">오늘 수량</div>
@@ -1362,7 +1353,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* 💡 "이미지로 저장" 버튼이 달력 옆으로 이동하고 디자인이 동기화되었습니다! */}
                   <div className="bg-gray-50 dark:bg-gray-800/30 px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0 flex-wrap gap-2">
                     <span className="text-sm font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">오늘 판매 상세 내역</span>
                     <div className="flex items-center gap-2 ml-auto">
@@ -1429,7 +1419,7 @@ export default function App() {
                                   </td>
                                   <td className="px-1 sm:px-2 py-2 text-right align-top">
                                     <div className="flex flex-col gap-1 w-full">
-                                      <FormattedNumberInput value={editForm.price} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(val)}); }} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-1 text-right text-xs sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" required={true} />
+                                      <FormattedNumberInput value={editForm.price} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(val)}); }} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded px-1 text-right text-xs sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" min="0" />
                                     </div>
                                   </td>
                                   <td className="px-3 py-2 hidden sm:table-cell align-top">
@@ -2141,7 +2131,7 @@ export default function App() {
                                   </div>
                                 </td>
                                 <td className="px-1 py-2 text-center align-top">
-                                  <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto sm:border sm:border-gray-300 dark:sm:border-gray-600 rounded-md overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
+                                  <div className="flex items-center justify-center w-full sm:w-[90px] h-8 mx-auto border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden bg-transparent sm:bg-white dark:sm:bg-gray-800 text-gray-900 dark:text-white focus-within:ring-1 focus-within:ring-orange-500 transition-shadow">
                                      <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; if (q > 1) setEditForm({...editForm, quantity: q - 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-600 focus:outline-none"><Minus size={12} strokeWidth={2.5}/></button>
                                      <FormattedNumberInput value={editForm.quantity} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, quantity: Number(val)}); }} className="flex-1 w-full h-full text-center text-xs sm:text-sm font-black bg-white dark:bg-gray-800 sm:bg-transparent border border-gray-300 dark:border-gray-600 sm:border-0 rounded-md sm:rounded-none outline-none" required={true} />
                                      <button type="button" onClick={() => { const q = Number(editForm.quantity) || 0; setEditForm({...editForm, quantity: q + 1}); }} className="hidden sm:flex px-2 h-full items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-200 dark:border-gray-600 focus:outline-none"><Plus size={12} strokeWidth={2.5}/></button>
@@ -2149,7 +2139,7 @@ export default function App() {
                                 </td>
                                 <td className="px-1 sm:px-2 py-2 text-right align-top">
                                   <div className="flex flex-col gap-1 w-full">
-                                    <FormattedNumberInput value={editForm.price} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(val)}); }} className="w-full h-8 ml-auto border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" required={true} />
+                                    <FormattedNumberInput value={editForm.price} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setEditForm({...editForm, price: Number(val)}); }} className="w-full h-8 ml-auto border border-gray-300 dark:border-gray-600 rounded-md px-1.5 sm:px-2 text-[11px] sm:text-sm text-right font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" min="0" />
                                   </div>
                                 </td>
                                 <td className="px-3 py-2 hidden sm:table-cell align-top">
