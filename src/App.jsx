@@ -1793,7 +1793,7 @@ export default function App() {
                   </tbody>
                   <tfoot className="bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 font-bold text-gray-800 dark:text-gray-200 sticky bottom-0">
                     <tr>
-                      <td className="sm:hidden pl-4 pr-2 py-3 text-center text-xs truncate align-middle">합계</td>
+                      <td colSpan="2" className="sm:hidden pl-4 pr-2 py-3 text-center text-xs truncate align-middle">합계</td>
                       <td colSpan="2" className="hidden sm:table-cell px-4 py-3 text-center text-xs truncate align-middle">전체 합계</td>
                       <td className="px-2 py-3 text-right text-xs text-gray-400 align-middle">-</td>
                       <td className="pl-2 pr-5 sm:pr-6 py-2.5 text-center align-middle">
