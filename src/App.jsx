@@ -292,6 +292,9 @@ export default function App() {
   // 캡처 영역 지정을 위한 Ref
   const salesSummaryRef = useRef(null);
 
+  // 재고 소진 감지용 Ref
+  const prevInventoryRef = useRef(null);
+
   // 💡 선택(일괄) 삭제 모드를 위한 상태 변수 추가
   const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
   const [selectedSalesIds, setSelectedSalesIds] = useState([]);
@@ -473,6 +476,7 @@ export default function App() {
     setSales([newSale, ...sales]);
     showToast(isNoDeduct ? "과거 내역이 등록되었습니다. (재고유지)" : "판매 내역이 등록되었습니다.", "success");
     setFormData({ date: formData.date, product: '', option: '', quantity: 1, price: 0, unitPrice: 0, note: '' });
+    setIsNoDeduct(false);
   };
 
   const handleParseBulkSales = async () => {
@@ -638,6 +642,7 @@ export default function App() {
   };
 
   const saveEdit = async () => {
+    if (!editForm) return;
     if (!editForm.product || !editForm.option || editForm.quantity <= 0 || editForm.price < 0) return showToast("입력값을 확인해주세요.", "error");
     const updatedSale = { ...editForm, quantity: Number(editForm.quantity), price: Number(editForm.price), totalPrice: Number(editForm.price) };
     if (supabaseClient) await supabaseClient.from('sales').update(updatedSale).eq('id', updatedSale.id);
@@ -982,24 +987,57 @@ export default function App() {
     setNewSellerInput('');
   };
 
-  const currentInventory = useMemo(() => {
-    const calculated = inventoryData.map(item => {
-      const soldQty = sales
-        .filter(sale => sale.product === item.product && sale.option === item.option && !(sale.note || '').includes('[재고차감X]'))
-        .reduce((sum, sale) => sum + sale.quantity, 0);
-      return { ...item, soldQty, remainQty: item.qty - soldQty };
+  const salesSoldMap = useMemo(() => {
+    const map = {};
+    sales.forEach(sale => {
+      if (!(sale.note || '').includes('[재고차감X]')) {
+        const key = `${sale.product}|${sale.option}`;
+        map[key] = (map[key] || 0) + Number(sale.quantity);
+      }
     });
-    return calculated.sort((a, b) => {
+    return map;
+  }, [sales]);
+
+  const currentInventory = useMemo(() => {
+    return inventoryData.map(item => {
+      const soldQty = salesSoldMap[`${item.product}|${item.option}`] || 0;
+      return { ...item, soldQty, remainQty: item.qty - soldQty };
+    }).sort((a, b) => {
       if (a.product === b.product) return a.option.localeCompare(b.option);
       return a.product.localeCompare(b.product);
     });
-  }, [sales, inventoryData]);
+  }, [inventoryData, salesSoldMap]);
+
+  useEffect(() => {
+    if (prevInventoryRef.current === null) {
+      prevInventoryRef.current = currentInventory;
+      return;
+    }
+    const newlyZeroItems = currentInventory.filter(item =>
+      item.remainQty <= 0 &&
+      (prevInventoryRef.current.find(prev => prev.id === item.id)?.remainQty ?? 0) > 0
+    );
+    prevInventoryRef.current = currentInventory;
+    if (newlyZeroItems.length === 0) return;
+    const ids = newlyZeroItems.map(i => i.id);
+    const resetSellers = async () => {
+      if (supabaseClient) {
+        for (const item of newlyZeroItems) {
+          await supabaseClient.from('inventory').update({ sellerName: '' }).eq('id', item.id);
+        }
+      }
+      setInventoryData(prev => prev.map(i => ids.includes(i.id) ? { ...i, sellerName: '' } : i));
+    };
+    resetSellers();
+  }, [currentInventory]);
 
   const selectedRemainQty = useMemo(() => {
     if (!formData.product || !formData.option) return null;
     const item = currentInventory.find(i => i.product === formData.product && i.option === formData.option);
     return item ? item.remainQty : null;
   }, [formData.product, formData.option, currentInventory]);
+
+  const activeInventory = useMemo(() => currentInventory.filter(item => Number(item.remainQty) > 0), [currentInventory]);
 
   const periodSalesSummary = useMemo(() => {
     const periodSales = sales.filter(sale => sale.date >= startDate && sale.date <= endDate);
@@ -1751,7 +1789,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
-                    {currentInventory.length === 0 ? (
+                    {currentInventory.length === 0 || activeInventory.length === 0 ? (
                       <tr>
                         <td colSpan="4" className="py-24">
                           <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
@@ -1761,7 +1799,7 @@ export default function App() {
                         </td>
                       </tr>
                     ) : (
-                      currentInventory.map((item) => (
+                      activeInventory.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
                           <td className="pl-4 sm:pl-5 pr-2 py-3 align-middle">
                             <div className="font-bold text-gray-900 dark:text-white truncate text-xs sm:text-sm">{item.product}</div>
