@@ -292,6 +292,10 @@ export default function App() {
   // 캡처 영역 지정을 위한 Ref
   const salesSummaryRef = useRef(null);
 
+  // 재고 소진 감지용 Ref
+  const prevInventoryRef = useRef(null);
+  const [outOfStockAlert, setOutOfStockAlert] = useState({ isOpen: false, items: [] });
+
   // 💡 선택(일괄) 삭제 모드를 위한 상태 변수 추가
   const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
   const [selectedSalesIds, setSelectedSalesIds] = useState([]);
@@ -994,6 +998,30 @@ export default function App() {
       return a.product.localeCompare(b.product);
     });
   }, [sales, inventoryData]);
+
+  useEffect(() => {
+    if (prevInventoryRef.current === null) {
+      prevInventoryRef.current = currentInventory;
+      return;
+    }
+    const newlyZeroItems = currentInventory.filter(item =>
+      item.remainQty <= 0 &&
+      (prevInventoryRef.current.find(prev => prev.id === item.id)?.remainQty ?? 0) > 0
+    );
+    prevInventoryRef.current = currentInventory;
+    if (newlyZeroItems.length === 0) return;
+    const ids = newlyZeroItems.map(i => i.id);
+    const resetSellers = async () => {
+      if (supabaseClient) {
+        for (const item of newlyZeroItems) {
+          await supabaseClient.from('inventory').update({ sellerName: '' }).eq('id', item.id);
+        }
+      }
+      setInventoryData(prev => prev.map(i => ids.includes(i.id) ? { ...i, sellerName: '' } : i));
+      setOutOfStockAlert({ isOpen: true, items: newlyZeroItems });
+    };
+    resetSellers();
+  }, [currentInventory]);
 
   const selectedRemainQty = useMemo(() => {
     if (!formData.product || !formData.option) return null;
@@ -1761,7 +1789,7 @@ export default function App() {
                         </td>
                       </tr>
                     ) : (
-                      currentInventory.map((item) => (
+                      currentInventory.filter(item => item.remainQty > 0).map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
                           <td className="pl-4 sm:pl-5 pr-2 py-3 align-middle">
                             <div className="font-bold text-gray-900 dark:text-white truncate text-xs sm:text-sm">{item.product}</div>
@@ -2553,6 +2581,48 @@ export default function App() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- 재고 소진 알림 모달 --- */}
+      {outOfStockAlert.isOpen && (
+        <div className="fixed inset-0 z-[140] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-red-50 dark:bg-red-900/20 flex justify-between items-center">
+              <h3 className="text-base font-black text-red-600 dark:text-red-400 flex items-center gap-2">
+                <AlertCircle size={18} /> 재고 소진 알림
+              </h3>
+              <button onClick={() => setOutOfStockAlert({ isOpen: false, items: [] })} className="p-1 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5 flex flex-col gap-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">아래 재고가 <strong className="text-red-500">0개</strong>가 되어 목록에서 숨겨졌습니다.<br/>판매자가 <strong>미지정</strong>으로 변경되었습니다.</p>
+              <ul className="flex flex-col gap-2 max-h-40 overflow-y-auto">
+                {outOfStockAlert.items.map(item => (
+                  <li key={item.id} className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+                    <Box size={14} className="text-red-400 shrink-0" />
+                    <span className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{item.product}</span>
+                    {item.option && <span className="text-xs text-gray-500 dark:text-gray-400 truncate">· {item.option}</span>}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setOutOfStockAlert({ isOpen: false, items: [] })}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={() => { setOutOfStockAlert({ isOpen: false, items: [] }); setMaximizedView('inventory'); }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gray-800 hover:bg-black dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors shadow-sm"
+                >
+                  재고 관리 열기
+                </button>
+              </div>
             </div>
           </div>
         </div>
