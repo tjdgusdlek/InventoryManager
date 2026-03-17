@@ -271,6 +271,7 @@ export default function App() {
   const [summaryTab, setSummaryTab] = useState('sales'); 
   const [settlementData, setSettlementData] = useState({ intermediate: 0, account: 0, cash: 0 });
   const [isSettlementSaving, setIsSettlementSaving] = useState(false);
+  const [adjustAmounts, setAdjustAmounts] = useState({ account: '', cash: '' });
 
   // --- 커스텀 확인 모달 상태 ---
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
@@ -727,14 +728,15 @@ export default function App() {
     showToast("재고가 추가되었습니다!", "success");
   };
 
-  const handleSaveSettlement = async (isAutoSave = false) => {
+  const handleSaveSettlement = async (isAutoSave = false, overrideData = null) => {
     setIsSettlementSaving(true);
+    const data = overrideData || settlementData;
     if (supabaseClient) {
       const { error } = await supabaseClient.from('settlement').upsert([{
-        id: 1, 
-        intermediate: settlementData.intermediate,
-        account: settlementData.account,
-        cash: settlementData.cash
+        id: 1,
+        intermediate: data.intermediate,
+        account: data.account,
+        cash: data.cash
       }]);
       if (error) showToast("DB 저장에 실패했습니다.", "error");
       else showToast(isAutoSave === true ? "자동 저장되었습니다." : "정산 데이터가 저장되었습니다!", "success");
@@ -1655,6 +1657,44 @@ export default function App() {
                             placeholder="0"
                           />
                           <span className="text-sm font-semibold text-gray-400 ml-1 mb-1">원</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-3">
+                          <FormattedNumberInput
+                            value={adjustAmounts[item.key]}
+                            onChange={(e) => {
+                              const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                              setAdjustAmounts(prev => ({ ...prev, [item.key]: rawValue }));
+                            }}
+                            className="flex-1 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 outline-none focus:border-gray-400 dark:focus:border-gray-500 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                            placeholder="조정 금액"
+                          />
+                          <span className="text-xs text-gray-400 shrink-0">원</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const amt = Number(adjustAmounts[item.key]) || 0;
+                              if (!amt) return;
+                              const next = Math.max(0, (settlementData[item.key] || 0) - amt);
+                              const newData = { ...settlementData, [item.key]: next };
+                              setSettlementData(newData);
+                              setAdjustAmounts(prev => ({ ...prev, [item.key]: '' }));
+                              handleSaveSettlement(true, newData);
+                            }}
+                            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:border-red-700 dark:hover:text-red-400 font-bold text-base transition-colors"
+                          >−</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const amt = Number(adjustAmounts[item.key]) || 0;
+                              if (!amt) return;
+                              const next = (settlementData[item.key] || 0) + amt;
+                              const newData = { ...settlementData, [item.key]: next };
+                              setSettlementData(newData);
+                              setAdjustAmounts(prev => ({ ...prev, [item.key]: '' }));
+                              handleSaveSettlement(true, newData);
+                            }}
+                            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-500 dark:hover:bg-blue-900/20 dark:hover:border-blue-700 dark:hover:text-blue-400 font-bold text-base transition-colors"
+                          >+</button>
                         </div>
                       </div>
                     ))}
