@@ -476,6 +476,7 @@ export default function App() {
     setSales([newSale, ...sales]);
     showToast(isNoDeduct ? "과거 내역이 등록되었습니다. (재고유지)" : "판매 내역이 등록되었습니다.", "success");
     setFormData({ date: formData.date, product: '', option: '', quantity: 1, price: 0, unitPrice: 0, note: '' });
+    setIsNoDeduct(false);
   };
 
   const handleParseBulkSales = async () => {
@@ -641,6 +642,7 @@ export default function App() {
   };
 
   const saveEdit = async () => {
+    if (!editForm) return;
     if (!editForm.product || !editForm.option || editForm.quantity <= 0 || editForm.price < 0) return showToast("입력값을 확인해주세요.", "error");
     const updatedSale = { ...editForm, quantity: Number(editForm.quantity), price: Number(editForm.price), totalPrice: Number(editForm.price) };
     if (supabaseClient) await supabaseClient.from('sales').update(updatedSale).eq('id', updatedSale.id);
@@ -985,18 +987,26 @@ export default function App() {
     setNewSellerInput('');
   };
 
-  const currentInventory = useMemo(() => {
-    const calculated = inventoryData.map(item => {
-      const soldQty = sales
-        .filter(sale => sale.product === item.product && sale.option === item.option && !(sale.note || '').includes('[재고차감X]'))
-        .reduce((sum, sale) => sum + sale.quantity, 0);
-      return { ...item, soldQty, remainQty: item.qty - soldQty };
+  const salesSoldMap = useMemo(() => {
+    const map = {};
+    sales.forEach(sale => {
+      if (!(sale.note || '').includes('[재고차감X]')) {
+        const key = `${sale.product}|${sale.option}`;
+        map[key] = (map[key] || 0) + Number(sale.quantity);
+      }
     });
-    return calculated.sort((a, b) => {
+    return map;
+  }, [sales]);
+
+  const currentInventory = useMemo(() => {
+    return inventoryData.map(item => {
+      const soldQty = salesSoldMap[`${item.product}|${item.option}`] || 0;
+      return { ...item, soldQty, remainQty: item.qty - soldQty };
+    }).sort((a, b) => {
       if (a.product === b.product) return a.option.localeCompare(b.option);
       return a.product.localeCompare(b.product);
     });
-  }, [sales, inventoryData]);
+  }, [inventoryData, salesSoldMap]);
 
   useEffect(() => {
     if (prevInventoryRef.current === null) {
