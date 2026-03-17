@@ -1029,6 +1029,8 @@ export default function App() {
     return item ? item.remainQty : null;
   }, [formData.product, formData.option, currentInventory]);
 
+  const activeInventory = useMemo(() => currentInventory.filter(item => Number(item.remainQty) > 0), [currentInventory]);
+
   const periodSalesSummary = useMemo(() => {
     const periodSales = sales.filter(sale => sale.date >= startDate && sale.date <= endDate);
     const summary = {};
@@ -1779,7 +1781,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
-                    {currentInventory.length === 0 ? (
+                    {currentInventory.length === 0 || activeInventory.length === 0 ? (
                       <tr>
                         <td colSpan="4" className="py-24">
                           <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
@@ -1789,7 +1791,7 @@ export default function App() {
                         </td>
                       </tr>
                     ) : (
-                      currentInventory.filter(item => item.remainQty > 0).map((item) => (
+                      activeInventory.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
                           <td className="pl-4 sm:pl-5 pr-2 py-3 align-middle">
                             <div className="font-bold text-gray-900 dark:text-white truncate text-xs sm:text-sm">{item.product}</div>
