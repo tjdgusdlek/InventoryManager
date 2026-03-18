@@ -1597,60 +1597,107 @@ export default function App() {
 
               {summaryTab === 'settlement' && (
                 <div className="flex-1 p-5 md:p-6 bg-white dark:bg-gray-900 overflow-y-auto">
+
+                  {/* 헤더 */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
                     <div>
-                      <h2 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2"><Database size={18} className="text-orange-500" /> 정산 및 시재 점검</h2>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">현재 실제 보유 자산을 입력하여 미정산금과의 오차를 확인하세요.</p>
+                      <h2 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2 whitespace-nowrap"><Database size={18} className="text-orange-500" /> 정산 및 시재 점검</h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">실제 보유 자산을 입력하여 미정산금과의 오차를 확인하세요.</p>
                     </div>
-                    <button 
-                      onClick={() => handleSaveSettlement(false)} 
+                    <button
+                      onClick={() => handleSaveSettlement(false)}
                       disabled={isSettlementSaving}
                       className="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white px-5 py-2.5 rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-2 disabled:bg-gray-300 dark:disabled:bg-gray-800 shadow-sm whitespace-nowrap"
                     >
-                      <Check size={14} /> 
+                      <Check size={14} />
                       <span>{isSettlementSaving ? "저장 중..." : "정산 내역 저장"}</span>
                     </button>
                   </div>
 
-                  <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl mb-8 bg-white dark:bg-gray-900 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-                    <div className="flex-1 p-5 lg:p-6 relative flex flex-col justify-between">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <label className="flex items-center text-sm font-bold text-gray-700 dark:text-gray-300">
-                            <Coins size={16} className="text-gray-400 mr-2" />정산된 금액
-                          </label>
-                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-1">입금 완료한 총 누적액</span>
+                  {/* 요약 스트립 */}
+                  {(() => {
+                    const remitted = Number(settlementData.intermediate) || 0;
+                    const inAccount = Number(settlementData.account) || 0;
+                    const inCash = Number(settlementData.cash) || 0;
+                    const totalSales = totalSalesSummary.totalAmount || 0;
+                    const unsettledAmount = totalSales - remitted;
+                    const totalAsset = inAccount + inCash;
+                    const tillDifference = totalAsset - unsettledAmount;
+                    return (
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                        {[
+                          { label: '누적 판매', value: totalSales, sub: '전체 판매 합계' },
+                          { label: '총 정산금', value: remitted, sub: '입금 완료 누적액' },
+                          { label: '미정산금', value: unsettledAmount, sub: '보관 중인 판매대금' },
+                        ].map((stat) => (
+                          <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 whitespace-nowrap">{stat.label}</span>
+                            <div className="flex items-end gap-1">
+                              <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{stat.value.toLocaleString()}</span>
+                              <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                            </div>
+                            <span className="text-[10px] text-gray-400 mt-1 block whitespace-nowrap">{stat.sub}</span>
+                          </div>
+                        ))}
+                        <div className={`col-span-2 lg:col-span-1 rounded-2xl p-4 border transition-colors ${
+                          tillDifference === 0
+                            ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50'
+                            : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800'
+                        }`}>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 whitespace-nowrap">최종 시재</span>
+                          <div className="flex items-end gap-1">
+                            <span className={`font-black text-lg tracking-tight whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-500'}`}>
+                              {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()}
+                            </span>
+                            <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                          </div>
+                          <span className="text-[10px] text-gray-400 mt-1 block whitespace-nowrap">
+                            {tillDifference === 0 ? '✓ 정산이 맞습니다' : '보유자산 − 미정산금'}
+                          </span>
                         </div>
-                        <button 
+                      </div>
+                    );
+                  })()}
+
+                  {/* 입력 카드 그리드 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+
+                    {/* 정산된 금액 */}
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5 flex flex-col">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                            <Coins size={15} className="text-gray-400" />정산된 금액
+                          </label>
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-0.5">입금 완료 누적액</span>
+                        </div>
+                        <button
                           type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowRemittanceModal(true);
-                          }}
-                          className="group flex items-center gap-0.5 text-xs font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap p-2 -mr-2 -mt-1 relative z-10 cursor-pointer"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowRemittanceModal(true); }}
+                          className="group flex items-center gap-0.5 text-xs font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap p-1 -mr-1 cursor-pointer"
                         >
-                          내역 관리 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                          내역<ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
                         </button>
                       </div>
-                      <div className="flex justify-end items-end pb-1 border-b border-transparent">
-                        <div className="text-right font-black text-2xl text-gray-900 dark:text-white tracking-tight truncate">
-                           {Number(settlementData.intermediate).toLocaleString()} 
-                        </div>
+                      <div className="flex items-end justify-end mt-auto pt-2">
+                        <span className="font-black text-3xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{Number(settlementData.intermediate).toLocaleString()}</span>
                         <span className="text-sm font-semibold text-gray-400 ml-1 mb-1">원</span>
                       </div>
                     </div>
 
+                    {/* 계좌 잔액 + 현금 */}
                     {[
-                      { key: 'account', label: '내 계좌 잔액', desc: '현재 계좌 잔고', icon: <Landmark size={16} className="text-gray-400 mr-2" /> },
-                      { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={16} className="text-gray-400 mr-2" /> }
+                      { key: 'account', label: '내 계좌 잔액', desc: '현재 계좌 잔고', icon: <Landmark size={15} className="text-gray-400" /> },
+                      { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={15} className="text-gray-400" /> }
                     ].map((item) => (
-                      <div key={item.key} className="flex-1 p-5 lg:p-6 relative">
-                        <div className="mb-6">
-                          <label className="flex items-center text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">{item.icon}{item.label}</label>
-                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-1">{item.desc}</span>
+                      <div key={item.key} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5 flex flex-col">
+                        <div className="mb-4">
+                          <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                            {item.icon}{item.label}
+                          </label>
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-0.5">{item.desc}</span>
                         </div>
-                        <div className="flex items-end justify-end border-b border-transparent focus-within:border-gray-300 dark:focus-within:border-gray-600 transition-colors pb-1">
+                        <div className="flex items-end justify-end border-b border-transparent focus-within:border-gray-300 dark:focus-within:border-gray-600 transition-colors pb-1 mb-3 mt-auto">
                           <FormattedNumberInput
                             value={settlementData[item.key] === 0 ? '' : settlementData[item.key]}
                             onChange={(e) => {
@@ -1658,22 +1705,22 @@ export default function App() {
                               setSettlementData({ ...settlementData, [item.key]: Number(rawValue) || 0 });
                             }}
                             onBlur={() => handleSaveSettlement(true)}
-                            className="w-full text-right font-black text-2xl bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700 tracking-tight"
+                            className="w-full text-right font-black text-3xl bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700 tracking-tight"
                             placeholder="0"
                           />
                           <span className="text-sm font-semibold text-gray-400 ml-1 mb-1">원</span>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-3">
+                        <div className="flex items-center gap-1.5">
                           <FormattedNumberInput
                             value={adjustAmounts[item.key]}
                             onChange={(e) => {
                               const rawValue = e.target.value.replace(/[^0-9]/g, '');
                               setAdjustAmounts(prev => ({ ...prev, [item.key]: rawValue }));
                             }}
-                            className="flex-1 min-w-0 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 dark:focus:border-gray-500 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                            className="flex-1 min-w-0 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
                             placeholder="조정 금액"
                           />
-                          <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap">원</span>
+                          <span className="text-xs text-gray-400 shrink-0">원</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -1712,7 +1759,7 @@ export default function App() {
                     const snackRemaining = snackBudget - snackUsed;
                     const snackPercent = snackBudget > 0 ? Math.min(100, Math.round((snackUsed / snackBudget) * 100)) : 0;
                     return (
-                      <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] mb-8 p-5 lg:p-6">
+                      <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5 lg:p-6">
                         <div className="flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-8">
                           <div className="lg:w-52 shrink-0">
                             <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">
@@ -1757,7 +1804,7 @@ export default function App() {
                                   const rawValue = e.target.value.replace(/[^0-9]/g, '');
                                   setAdjustAmounts(prev => ({ ...prev, snack: rawValue }));
                                 }}
-                                className="flex-1 min-w-0 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 dark:focus:border-gray-500 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                                className="flex-1 min-w-0 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
                                 placeholder="금액"
                               />
                               <span className="text-xs text-gray-400 shrink-0">원</span>
@@ -1788,65 +1835,6 @@ export default function App() {
                                 className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-500 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 dark:hover:text-emerald-400 font-bold text-sm transition-colors"
                               >+</button>
                             </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 결과 요약 */}
-                  {(() => {
-                    const remitted = Number(settlementData.intermediate) || 0;
-                    const inAccount = Number(settlementData.account) || 0;
-                    const inCash = Number(settlementData.cash) || 0;
-                    const totalSales = totalSalesSummary.totalAmount || 0;
-
-                    const unsettledAmount = totalSales - remitted;
-                    const totalAsset = inAccount + inCash;
-                    const tillDifference = totalAsset - unsettledAmount;
-
-                    return (
-                      <div className="px-2 sm:px-4 pb-4">
-                        <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-widest">결과 요약</h3>
-                        <div className="flex flex-col">
-                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 dark:border-gray-800 gap-2">
-                            <div>
-                              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm whitespace-nowrap">
-                                미정산금 <span className="font-medium text-xs text-gray-400 ml-2 hidden sm:inline">(보관 중인 판매대금)</span>
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-end gap-4 w-full sm:w-auto">
-                              <span className="text-[11px] text-gray-400 hidden lg:inline">누적 판매({totalSales.toLocaleString()}) - 정산({remitted.toLocaleString()})</span>
-                              <span className="font-bold text-lg text-gray-900 dark:text-white text-right tracking-tight whitespace-nowrap">{unsettledAmount.toLocaleString()} 원</span>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 dark:border-gray-800 gap-2">
-                            <div>
-                              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm whitespace-nowrap">
-                                현재 보유 자산 <span className="font-medium text-xs text-gray-400 ml-2 hidden sm:inline">(계좌 + 현금)</span>
-                              </span>
-                            </div>
-                            <span className="font-bold text-lg text-gray-900 dark:text-white text-right tracking-tight whitespace-nowrap">{totalAsset.toLocaleString()} 원</span>
-                          </div>
-
-                          <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center p-5 mt-6 rounded-2xl gap-3 border transition-colors ${
-                            tillDifference === 0
-                              ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50'
-                              : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800/80'
-                          }`}>
-                            <div>
-                              <span className={`font-black flex items-center text-base whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-800 dark:text-gray-200'}`}>
-                                {tillDifference === 0 && <CheckCircle2 size={18} className="mr-1.5" />}
-                                최종 시재 (차액)
-                              </span>
-                              <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 block">현재 보유 자산 - 미정산금</span>
-                            </div>
-                            <span className={`font-black text-2xl md:text-3xl text-right tracking-tight whitespace-nowrap ${
-                              tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-500'
-                            }`}>
-                              {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} <span className={`text-base font-bold ml-0.5 ${tillDifference === 0 ? 'text-emerald-500 dark:text-emerald-500/70' : 'text-gray-500'}`}>원</span>
-                            </span>
                           </div>
                         </div>
                       </div>
