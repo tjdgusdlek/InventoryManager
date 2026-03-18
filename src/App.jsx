@@ -1664,7 +1664,7 @@ export default function App() {
 
                     {/* 정산된 금액 */}
                     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5 flex flex-col">
-                      <div className="flex justify-between items-start mb-4">
+                      <div className="flex justify-between items-start mb-3">
                         <div>
                           <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                             <Coins size={15} className="text-gray-400" />정산된 금액
@@ -1679,7 +1679,7 @@ export default function App() {
                           내역<ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
                         </button>
                       </div>
-                      <div className="flex items-end justify-end mt-auto pt-2">
+                      <div className="flex items-end justify-end mt-auto border-b border-gray-100 dark:border-gray-800 pb-1">
                         <span className="font-black text-3xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{Number(settlementData.intermediate).toLocaleString()}</span>
                         <span className="text-sm font-semibold text-gray-400 ml-1 mb-1">원</span>
                       </div>
@@ -1691,49 +1691,13 @@ export default function App() {
                       { key: 'cash', label: '보유중인 현금', desc: '현재 수중의 현금', icon: <Banknote size={15} className="text-gray-400" /> }
                     ].map((item) => (
                       <div key={item.key} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5 flex flex-col">
-                        <div className="mb-4">
+                        <div className="mb-3">
                           <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                             {item.icon}{item.label}
                           </label>
                           <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-0.5">{item.desc}</span>
                         </div>
-                        <div className="flex items-end justify-end border-b border-transparent focus-within:border-gray-300 dark:focus-within:border-gray-600 transition-colors pb-1 mb-3 mt-auto">
-                          <FormattedNumberInput
-                            value={settlementData[item.key] === 0 ? '' : settlementData[item.key]}
-                            onChange={(e) => {
-                              const rawValue = e.target.value.replace(/[^0-9]/g, '');
-                              setSettlementData({ ...settlementData, [item.key]: Number(rawValue) || 0 });
-                            }}
-                            onBlur={() => handleSaveSettlement(true)}
-                            className="w-full text-right font-black text-3xl bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700 tracking-tight"
-                            placeholder="0"
-                          />
-                          <span className="text-sm font-semibold text-gray-400 ml-1 mb-1">원</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <FormattedNumberInput
-                            value={adjustAmounts[item.key]}
-                            onChange={(e) => {
-                              const rawValue = e.target.value.replace(/[^0-9]/g, '');
-                              setAdjustAmounts(prev => ({ ...prev, [item.key]: rawValue }));
-                            }}
-                            className="flex-1 min-w-0 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
-                            placeholder="조정 금액"
-                          />
-                          <span className="text-xs text-gray-400 shrink-0">원</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const amt = Number(adjustAmounts[item.key]) || 0;
-                              if (!amt) return;
-                              const next = Math.max(0, (settlementData[item.key] || 0) - amt);
-                              const newData = { ...settlementData, [item.key]: next };
-                              setSettlementData(newData);
-                              setAdjustAmounts(prev => ({ ...prev, [item.key]: '' }));
-                              handleSaveSettlement(true, newData);
-                            }}
-                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-500 dark:hover:bg-orange-900/20 dark:hover:border-orange-700 dark:hover:text-orange-400 font-bold text-sm transition-colors"
-                          >−</button>
+                        <div className="flex items-center gap-1.5 mb-3">
                           <button
                             type="button"
                             onClick={() => {
@@ -1747,6 +1711,42 @@ export default function App() {
                             }}
                             className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-500 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 dark:hover:text-emerald-400 font-bold text-sm transition-colors"
                           >+</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const amt = Number(adjustAmounts[item.key]) || 0;
+                              if (!amt) return;
+                              const next = Math.max(0, (settlementData[item.key] || 0) - amt);
+                              const newData = { ...settlementData, [item.key]: next };
+                              setSettlementData(newData);
+                              setAdjustAmounts(prev => ({ ...prev, [item.key]: '' }));
+                              handleSaveSettlement(true, newData);
+                            }}
+                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-500 dark:hover:bg-orange-900/20 dark:hover:border-orange-700 dark:hover:text-orange-400 font-bold text-sm transition-colors"
+                          >−</button>
+                          <FormattedNumberInput
+                            value={adjustAmounts[item.key]}
+                            onChange={(e) => {
+                              const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                              setAdjustAmounts(prev => ({ ...prev, [item.key]: rawValue }));
+                            }}
+                            className="flex-1 min-w-0 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                            placeholder="조정 금액"
+                          />
+                          <span className="text-xs text-gray-400 shrink-0">원</span>
+                        </div>
+                        <div className="flex items-end justify-end border-b border-transparent focus-within:border-gray-300 dark:focus-within:border-gray-600 transition-colors pb-1 mt-auto">
+                          <FormattedNumberInput
+                            value={settlementData[item.key] === 0 ? '' : settlementData[item.key]}
+                            onChange={(e) => {
+                              const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                              setSettlementData({ ...settlementData, [item.key]: Number(rawValue) || 0 });
+                            }}
+                            onBlur={() => handleSaveSettlement(true)}
+                            className="w-full text-right font-black text-3xl bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700 tracking-tight"
+                            placeholder="0"
+                          />
+                          <span className="text-sm font-semibold text-gray-400 ml-1 mb-1">원</span>
                         </div>
                       </div>
                     ))}
@@ -1773,26 +1773,25 @@ export default function App() {
                           </div>
                           <div className="hidden lg:block w-px bg-gray-100 dark:bg-gray-800 self-stretch" />
                           <div className="flex-1 min-w-0">
-                            <div className="grid grid-cols-2 gap-3 mb-3">
-                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
+                            <div className="flex items-stretch gap-3 mb-3 min-w-0">
+                              <div className="flex-1 min-w-0 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 overflow-hidden">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">사용</span>
-                                <div className="flex items-end gap-1">
-                                  <span className="font-black text-xl text-orange-500 whitespace-nowrap">{snackUsed.toLocaleString()}</span>
-                                  <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                                <div className="flex items-end gap-0.5 min-w-0">
+                                  <span className="font-black text-lg text-orange-500 truncate">{snackUsed.toLocaleString()}</span>
+                                  <span className="text-xs font-semibold text-gray-400 mb-0.5 shrink-0">원</span>
                                 </div>
                               </div>
-                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
+                              <div className="flex-1 min-w-0 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 overflow-hidden">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">잔여</span>
-                                <div className="flex items-end gap-1">
-                                  <span className={`font-black text-xl whitespace-nowrap ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-500 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
-                                  <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                                <div className="flex items-end gap-0.5 min-w-0">
+                                  <span className={`font-black text-lg truncate ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-500 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
+                                  <span className="text-xs font-semibold text-gray-400 mb-0.5 shrink-0">원</span>
                                 </div>
                               </div>
                             </div>
                             <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                               <div className={`h-full rounded-full transition-all duration-500 ${snackPercent >= 100 ? 'bg-orange-400' : 'bg-emerald-400'}`} style={{ width: `${snackPercent}%` }} />
                             </div>
-                            <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 block">{snackPercent}% 사용됨</span>
                           </div>
                           <div className="hidden lg:block w-px bg-gray-100 dark:bg-gray-800 self-stretch" />
                           <div className="lg:w-44 shrink-0">
@@ -1807,20 +1806,6 @@ export default function App() {
                                 className="flex-1 min-w-0 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
                                 placeholder="금액"
                               />
-                              <span className="text-xs text-gray-400 shrink-0">원</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const amt = Number(adjustAmounts.snack) || 0;
-                                  if (!amt) return;
-                                  const next = Math.max(0, (settlementData.snackUsed || 0) - amt);
-                                  const newData = { ...settlementData, snackUsed: next };
-                                  setSettlementData(newData);
-                                  setAdjustAmounts(prev => ({ ...prev, snack: '' }));
-                                  handleSaveSettlement(true, newData);
-                                }}
-                                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-500 dark:hover:bg-orange-900/20 dark:hover:border-orange-700 dark:hover:text-orange-400 font-bold text-sm transition-colors"
-                              >−</button>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1834,6 +1819,20 @@ export default function App() {
                                 }}
                                 className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-500 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 dark:hover:text-emerald-400 font-bold text-sm transition-colors"
                               >+</button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const amt = Number(adjustAmounts.snack) || 0;
+                                  if (!amt) return;
+                                  const next = Math.max(0, (settlementData.snackUsed || 0) - amt);
+                                  const newData = { ...settlementData, snackUsed: next };
+                                  setSettlementData(newData);
+                                  setAdjustAmounts(prev => ({ ...prev, snack: '' }));
+                                  handleSaveSettlement(true, newData);
+                                }}
+                                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-500 dark:hover:bg-orange-900/20 dark:hover:border-orange-700 dark:hover:text-orange-400 font-bold text-sm transition-colors"
+                              >−</button>
+                              <span className="text-xs text-gray-400 shrink-0">원</span>
                             </div>
                           </div>
                         </div>
