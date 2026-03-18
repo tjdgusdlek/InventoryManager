@@ -896,13 +896,18 @@ export default function App() {
   const handleAddSnack = async (e) => {
     e.preventDefault();
     if (!newSnackEntry.amount || newSnackEntry.amount <= 0) return showToast("정상적인 금액을 입력해주세요.", "error");
-    const newItem = { id: Date.now() + Math.floor(Math.random() * 10000), date: newSnackEntry.date, amount: Number(newSnackEntry.amount), note: newSnackEntry.note };
-    const updatedSnackUsed = (settlementData.snackUsed || 0) + newItem.amount;
+    const insertPayload = { date: newSnackEntry.date, amount: Number(newSnackEntry.amount), note: newSnackEntry.note };
+    const updatedSnackUsed = (settlementData.snackUsed || 0) + insertPayload.amount;
+    let savedItem = { id: Date.now() + Math.floor(Math.random() * 10000), ...insertPayload };
     if (supabaseClient) {
-      try { await supabaseClient.from('snack_history').insert([newItem]); } catch(e) { console.warn("snack_history 테이블 없음"); }
+      try {
+        const { data, error } = await supabaseClient.from('snack_history').insert([insertPayload]).select().single();
+        if (error) { console.error("snack_history insert error:", error); showToast("내역 저장에 실패했습니다: " + error.message, "error"); return; }
+        if (data) savedItem = data;
+      } catch(e) { console.error("snack_history insert exception:", e); }
       await supabaseClient.from('settlement').upsert([{ id: 1, intermediate: settlementData.intermediate, account: settlementData.account, cash: settlementData.cash, snackUsed: updatedSnackUsed }]);
     }
-    setSnackHistory([newItem, ...snackHistory].sort((a,b) => new Date(b.date) - new Date(a.date)));
+    setSnackHistory(prev => [savedItem, ...prev].sort((a,b) => new Date(b.date) - new Date(a.date)));
     setSettlementData(prev => ({ ...prev, snackUsed: updatedSnackUsed }));
     setNewSnackEntry({ date: today, amount: 0, note: '' });
     showToast("간식비 내역이 추가되었습니다.", "success");
@@ -1724,23 +1729,23 @@ export default function App() {
                     return (
                       <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-                          {/* 누적 판매 */}
+                          {/* 누적 판매 / 미정산금 */}
                           {[
                             { label: '누적 판매', value: totalSales, sub: '전체 판매 합계' },
                             { label: '미정산금', value: unsettledAmount, sub: '보관 중인 판매대금' },
                           ].map((stat) => (
-                            <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 whitespace-nowrap">{stat.label}</span>
-                              <div className="flex items-end gap-1">
-                                <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{stat.value.toLocaleString()}</span>
+                            <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">{stat.label}</span>
+                              <span className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">{stat.sub}</span>
+                              <div className="flex items-end justify-end gap-1 mt-auto pt-3">
+                                <span className="font-black text-xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{stat.value.toLocaleString()}</span>
                                 <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
                               </div>
-                              <span className="text-[10px] text-gray-400 mt-1 block whitespace-nowrap">{stat.sub}</span>
                             </div>
                           ))}
                           {/* 총 정산금 (내역 버튼 포함) */}
-                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
-                            <div className="flex justify-between items-start mb-2">
+                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col">
+                            <div className="flex justify-between items-start">
                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">총 정산금</span>
                               <button
                                 type="button"
@@ -1750,15 +1755,15 @@ export default function App() {
                                 내역<ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
                               </button>
                             </div>
-                            <div className="flex items-end gap-1">
-                              <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{remitted.toLocaleString()}</span>
+                            <span className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">입금 완료 누적액</span>
+                            <div className="flex items-end justify-end gap-1 mt-auto pt-3">
+                              <span className="font-black text-xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{remitted.toLocaleString()}</span>
                               <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
                             </div>
-                            <span className="text-[10px] text-gray-400 mt-1 block whitespace-nowrap">입금 완료 누적액</span>
                           </div>
                           {/* 잔여 간식비 카드 */}
-                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
-                            <div className="flex justify-between items-start mb-2">
+                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col">
+                            <div className="flex justify-between items-start">
                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">잔여 간식비</span>
                               <button
                                 type="button"
@@ -1768,11 +1773,10 @@ export default function App() {
                                 내역<ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
                               </button>
                             </div>
-                            <div className="flex items-end gap-1">
-                              <span className={`font-black text-lg tracking-tight whitespace-nowrap ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
+                            <div className="flex items-end justify-end gap-1 mt-auto pt-3">
+                              <span className={`font-black text-xl tracking-tight whitespace-nowrap ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
                               <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
                             </div>
-                            <span className="text-[10px] text-gray-400 mt-1 block">예산 {snackBudget.toLocaleString()}원 중 {snackUsed.toLocaleString()}원 사용</span>
                           </div>
                         </div>
                         {/* 최종 시재 - 전체 너비 */}
