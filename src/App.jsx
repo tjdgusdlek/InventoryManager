@@ -1734,17 +1734,17 @@ export default function App() {
                             { label: '누적 판매', value: totalSales, sub: '전체 판매 합계' },
                             { label: '미정산금', value: unsettledAmount, sub: '보관 중인 판매대금' },
                           ].map((stat) => (
-                            <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col">
+                            <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden">
                               <span className="text-xs font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">{stat.label}</span>
                               <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 whitespace-nowrap">{stat.sub}</span>
-                              <div className="flex items-baseline justify-end gap-1 mt-auto pt-3">
-                                <span className="font-black text-2xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{stat.value.toLocaleString()}</span>
-                                <span className="text-xs font-semibold text-gray-400">원</span>
+                              <div className="flex items-baseline justify-end gap-1 mt-auto pt-3 min-w-0">
+                                <span className="font-black text-xl sm:text-2xl text-gray-900 dark:text-white tracking-tight truncate">{stat.value.toLocaleString()}</span>
+                                <span className="text-xs font-semibold text-gray-400 shrink-0">원</span>
                               </div>
                             </div>
                           ))}
                           {/* 총 정산금 (내역 버튼 포함) */}
-                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col">
+                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden">
                             <div className="flex justify-between items-center">
                               <span className="text-xs font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">총 정산금</span>
                               <button
@@ -1756,13 +1756,13 @@ export default function App() {
                               </button>
                             </div>
                             <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 whitespace-nowrap">입금 완료 누적액</span>
-                            <div className="flex items-baseline justify-end gap-1 mt-auto pt-3">
-                              <span className="font-black text-2xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{remitted.toLocaleString()}</span>
-                              <span className="text-xs font-semibold text-gray-400">원</span>
+                            <div className="flex items-baseline justify-end gap-1 mt-auto pt-3 min-w-0">
+                              <span className="font-black text-xl sm:text-2xl text-gray-900 dark:text-white tracking-tight truncate">{remitted.toLocaleString()}</span>
+                              <span className="text-xs font-semibold text-gray-400 shrink-0">원</span>
                             </div>
                           </div>
                           {/* 잔여 간식비 카드 */}
-                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col">
+                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden">
                             <div className="flex justify-between items-center">
                               <span className="text-xs font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">잔여 간식비</span>
                               <button
@@ -1773,9 +1773,10 @@ export default function App() {
                                 내역<ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
                               </button>
                             </div>
-                            <div className="flex items-baseline justify-end gap-1 mt-auto pt-3">
-                              <span className={`font-black text-2xl tracking-tight whitespace-nowrap ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
-                              <span className="text-xs font-semibold text-gray-400">원</span>
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 whitespace-nowrap">정산금의 5%</span>
+                            <div className="flex items-baseline justify-end gap-1 mt-auto pt-3 min-w-0">
+                              <span className={`font-black text-xl sm:text-2xl tracking-tight truncate ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
+                              <span className="text-xs font-semibold text-gray-400 shrink-0">원</span>
                             </div>
                           </div>
                         </div>
