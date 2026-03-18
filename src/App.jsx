@@ -1607,7 +1607,7 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100 dark:divide-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl mb-8 bg-white dark:bg-gray-900 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+                  <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl mb-8 bg-white dark:bg-gray-900 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
                     <div className="flex-1 p-5 lg:p-6 relative flex flex-col justify-between">
                       <div className="flex justify-between items-start mb-6">
                         <div>
@@ -1642,7 +1642,7 @@ export default function App() {
                     ].map((item) => (
                       <div key={item.key} className="flex-1 p-5 lg:p-6 relative">
                         <div className="mb-6">
-                          <label className="flex items-center text-sm font-bold text-gray-700 dark:text-gray-300">{item.icon}{item.label}</label>
+                          <label className="flex items-center text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">{item.icon}{item.label}</label>
                           <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-1">{item.desc}</span>
                         </div>
                         <div className="flex items-end justify-end border-b border-transparent focus-within:border-gray-300 dark:focus-within:border-gray-600 transition-colors pb-1">
@@ -1665,10 +1665,10 @@ export default function App() {
                               const rawValue = e.target.value.replace(/[^0-9]/g, '');
                               setAdjustAmounts(prev => ({ ...prev, [item.key]: rawValue }));
                             }}
-                            className="flex-1 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 outline-none focus:border-gray-400 dark:focus:border-gray-500 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                            className="flex-1 min-w-0 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 dark:focus:border-gray-500 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
                             placeholder="조정 금액"
                           />
-                          <span className="text-xs text-gray-400 shrink-0">원</span>
+                          <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap">원</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -1680,7 +1680,7 @@ export default function App() {
                               setAdjustAmounts(prev => ({ ...prev, [item.key]: '' }));
                               handleSaveSettlement(true, newData);
                             }}
-                            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:border-red-700 dark:hover:text-red-400 font-bold text-base transition-colors"
+                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-500 dark:hover:bg-orange-900/20 dark:hover:border-orange-700 dark:hover:text-orange-400 font-bold text-sm transition-colors"
                           >−</button>
                           <button
                             type="button"
@@ -1693,7 +1693,7 @@ export default function App() {
                               setAdjustAmounts(prev => ({ ...prev, [item.key]: '' }));
                               handleSaveSettlement(true, newData);
                             }}
-                            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-500 dark:hover:bg-blue-900/20 dark:hover:border-blue-700 dark:hover:text-blue-400 font-bold text-base transition-colors"
+                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-500 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 dark:hover:text-emerald-400 font-bold text-sm transition-colors"
                           >+</button>
                         </div>
                       </div>
@@ -1716,7 +1716,7 @@ export default function App() {
                         <div className="flex flex-col">
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 dark:border-gray-800 gap-2">
                             <div>
-                              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm">
+                              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm whitespace-nowrap">
                                 미정산금 <span className="font-medium text-xs text-gray-400 ml-2 hidden sm:inline">(보관 중인 판매대금)</span>
                               </span>
                             </div>
@@ -1728,7 +1728,7 @@ export default function App() {
 
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 dark:border-gray-800 gap-2">
                             <div>
-                              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm">
+                              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center text-sm whitespace-nowrap">
                                 현재 보유 자산 <span className="font-medium text-xs text-gray-400 ml-2 hidden sm:inline">(계좌 + 현금)</span>
                               </span>
                             </div>
@@ -1741,15 +1741,14 @@ export default function App() {
                               : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800/80'
                           }`}>
                             <div>
-                              <span className={`font-black flex items-center text-base ${tillDifference === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-800 dark:text-gray-200'}`}>
+                              <span className={`font-black flex items-center text-base whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-800 dark:text-gray-200'}`}>
                                 {tillDifference === 0 && <CheckCircle2 size={18} className="mr-1.5" />}
                                 최종 시재 (차액)
                               </span>
                               <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 block">현재 보유 자산 - 미정산금</span>
                             </div>
-                            <span className={`font-black text-2xl md:text-3xl text-right tracking-tight ${
-                              tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 
-                              tillDifference > 0 ? 'text-blue-500' : 'text-orange-500'
+                            <span className={`font-black text-2xl md:text-3xl text-right tracking-tight whitespace-nowrap ${
+                              tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-500'
                             }`}>
                               {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()} <span className={`text-base font-bold ml-0.5 ${tillDifference === 0 ? 'text-emerald-500 dark:text-emerald-500/70' : 'text-gray-500'}`}>원</span>
                             </span>
