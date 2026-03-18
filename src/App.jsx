@@ -1735,47 +1735,47 @@ export default function App() {
                             { label: '미정산금', value: unsettledAmount, sub: '보관 중인 판매대금' },
                           ].map((stat) => (
                             <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">{stat.label}</span>
-                              <span className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">{stat.sub}</span>
-                              <div className="flex items-end justify-end gap-1 mt-auto pt-3">
-                                <span className="font-black text-xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{stat.value.toLocaleString()}</span>
-                                <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">{stat.label}</span>
+                              <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 whitespace-nowrap">{stat.sub}</span>
+                              <div className="flex items-baseline justify-end gap-1 mt-auto pt-3">
+                                <span className="font-black text-2xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{stat.value.toLocaleString()}</span>
+                                <span className="text-xs font-semibold text-gray-400">원</span>
                               </div>
                             </div>
                           ))}
                           {/* 총 정산금 (내역 버튼 포함) */}
                           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col">
-                            <div className="flex justify-between items-start">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">총 정산금</span>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">총 정산금</span>
                               <button
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowRemittanceModal(true); }}
-                                className="group flex items-center gap-0.5 text-[10px] font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap cursor-pointer -mt-0.5"
+                                className="group flex items-center gap-0.5 text-[10px] font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap cursor-pointer"
                               >
                                 내역<ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
                               </button>
                             </div>
-                            <span className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">입금 완료 누적액</span>
-                            <div className="flex items-end justify-end gap-1 mt-auto pt-3">
-                              <span className="font-black text-xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{remitted.toLocaleString()}</span>
-                              <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 whitespace-nowrap">입금 완료 누적액</span>
+                            <div className="flex items-baseline justify-end gap-1 mt-auto pt-3">
+                              <span className="font-black text-2xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{remitted.toLocaleString()}</span>
+                              <span className="text-xs font-semibold text-gray-400">원</span>
                             </div>
                           </div>
                           {/* 잔여 간식비 카드 */}
                           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col">
-                            <div className="flex justify-between items-start">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">잔여 간식비</span>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">잔여 간식비</span>
                               <button
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSnackModal(true); }}
-                                className="group flex items-center gap-0.5 text-[10px] font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap cursor-pointer -mt-0.5"
+                                className="group flex items-center gap-0.5 text-[10px] font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap cursor-pointer"
                               >
                                 내역<ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
                               </button>
                             </div>
-                            <div className="flex items-end justify-end gap-1 mt-auto pt-3">
-                              <span className={`font-black text-xl tracking-tight whitespace-nowrap ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
-                              <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                            <div className="flex items-baseline justify-end gap-1 mt-auto pt-3">
+                              <span className={`font-black text-2xl tracking-tight whitespace-nowrap ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
+                              <span className="text-xs font-semibold text-gray-400">원</span>
                             </div>
                           </div>
                         </div>
