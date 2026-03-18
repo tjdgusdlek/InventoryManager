@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx vite:*)",
       "Bash(where gh:*)",
-      "Bash(winget list:*)"
+      "Bash(winget list:*)",
+      "Bash(grep -n \"^import\\\\|from ''''lucide-react''''\" src/App.jsx)"
     ]
   }
 }
