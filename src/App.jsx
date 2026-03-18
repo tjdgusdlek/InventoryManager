@@ -270,7 +270,6 @@ export default function App() {
 
   const [summaryTab, setSummaryTab] = useState('sales'); 
   const [settlementData, setSettlementData] = useState({ intermediate: 0, account: 0, cash: 0, snackUsed: 0 });
-  const [isSettlementSaving, setIsSettlementSaving] = useState(false);
   const [adjustAmounts, setAdjustAmounts] = useState({ account: '', cash: '', snack: '' });
 
   // --- 커스텀 확인 모달 상태 ---
@@ -297,6 +296,7 @@ export default function App() {
 
   // 캡처 영역 지정을 위한 Ref
   const salesSummaryRef = useRef(null);
+  const settlementRef = useRef(null);
 
   // 재고 소진 감지용 Ref
   const prevInventoryRef = useRef(null);
@@ -654,6 +654,43 @@ export default function App() {
     }
   };
 
+  const handleCaptureSettlement = async () => {
+    if (!settlementRef.current) return;
+    const captureTarget = settlementRef.current;
+    const ignoreElements = captureTarget.querySelectorAll('[data-capture-ignore="true"]');
+    const scrollableDivs = captureTarget.querySelectorAll('.overflow-y-auto, .overflow-x-auto, .overflow-auto');
+    try {
+      showToast("고화질 이미지를 생성하는 중입니다...", "info");
+      const style = document.createElement('style');
+      style.id = 'capture-temp-style-settlement';
+      style.innerHTML = `.capture-hide-scrollbar::-webkit-scrollbar { display: none !important; } .capture-hide-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }`;
+      document.head.appendChild(style);
+      ignoreElements.forEach(el => { el.style.opacity = '0'; });
+      scrollableDivs.forEach(div => { div.classList.add('capture-hide-scrollbar'); });
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const htmlToImage = await import('https://esm.sh/html-to-image');
+      const isDark = document.documentElement.classList.contains('dark') || window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const dataUrl = await htmlToImage.toPng(captureTarget, {
+        backgroundColor: isDark ? '#111827' : '#ffffff',
+        pixelRatio: 2,
+        style: { pointerEvents: 'none' }
+      });
+      const link = document.createElement('a');
+      link.download = `정산현황_${getLocalToday()}.png`;
+      link.href = dataUrl;
+      link.click();
+      showToast("고화질 이미지가 성공적으로 저장되었습니다!", "success");
+    } catch (error) {
+      console.error('Capture failed:', error);
+      showToast("이미지 저장에 실패했습니다.", "error");
+    } finally {
+      ignoreElements.forEach(el => { el.style.opacity = ''; });
+      scrollableDivs.forEach(div => { div.classList.remove('capture-hide-scrollbar'); });
+      const styleEl = document.getElementById('capture-temp-style-settlement');
+      if (styleEl) styleEl.remove();
+    }
+  };
+
   const saveEdit = async () => {
     if (!editForm) return;
     if (!editForm.product || !editForm.option || editForm.quantity <= 0 || editForm.price < 0) return showToast("입력값을 확인해주세요.", "error");
@@ -741,7 +778,6 @@ export default function App() {
   };
 
   const handleSaveSettlement = async (isAutoSave = false, overrideData = null) => {
-    setIsSettlementSaving(true);
     const data = overrideData || settlementData;
     if (supabaseClient) {
       const { error } = await supabaseClient.from('settlement').upsert([{
@@ -756,7 +792,6 @@ export default function App() {
     } else {
       showToast(isAutoSave === true ? "자동 저장되었습니다. (로컬)" : "로컬 환경에 저장되었습니다.", "success");
     }
-    setIsSettlementSaving(false);
   };
 
   const handleAddRemittance = async (e) => {
@@ -1655,7 +1690,7 @@ export default function App() {
               )}
 
               {summaryTab === 'settlement' && (
-                <div className="flex-1 p-5 md:p-6 bg-white dark:bg-gray-900 overflow-y-auto">
+                <div ref={settlementRef} className="flex-1 p-5 md:p-6 bg-white dark:bg-gray-900 overflow-y-auto">
 
                   {/* 헤더 */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
@@ -1664,12 +1699,13 @@ export default function App() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">실제 보유 자산을 입력하여 미정산금과의 오차를 확인하세요.</p>
                     </div>
                     <button
-                      onClick={() => handleSaveSettlement(false)}
-                      disabled={isSettlementSaving}
-                      className="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white px-5 py-2.5 rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-2 disabled:bg-gray-300 dark:disabled:bg-gray-800 shadow-sm whitespace-nowrap"
+                      data-capture-ignore="true"
+                      onClick={handleCaptureSettlement}
+                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors whitespace-nowrap cursor-pointer"
+                      title="현재 영역을 이미지로 저장"
                     >
-                      <Check size={14} />
-                      <span>{isSettlementSaving ? "저장 중..." : "정산 내역 저장"}</span>
+                      <Camera size={13} className="text-gray-500 dark:text-gray-400" />
+                      <span>이미지로 저장</span>
                     </button>
                   </div>
 
@@ -1688,9 +1724,9 @@ export default function App() {
                     return (
                       <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                          {/* 누적 판매 */}
                           {[
                             { label: '누적 판매', value: totalSales, sub: '전체 판매 합계' },
-                            { label: '총 정산금', value: remitted, sub: '입금 완료 누적액' },
                             { label: '미정산금', value: unsettledAmount, sub: '보관 중인 판매대금' },
                           ].map((stat) => (
                             <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
@@ -1702,6 +1738,24 @@ export default function App() {
                               <span className="text-[10px] text-gray-400 mt-1 block whitespace-nowrap">{stat.sub}</span>
                             </div>
                           ))}
+                          {/* 총 정산금 (내역 버튼 포함) */}
+                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">총 정산금</span>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowRemittanceModal(true); }}
+                                className="group flex items-center gap-0.5 text-[10px] font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap cursor-pointer -mt-0.5"
+                              >
+                                내역<ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
+                              </button>
+                            </div>
+                            <div className="flex items-end gap-1">
+                              <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{remitted.toLocaleString()}</span>
+                              <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                            </div>
+                            <span className="text-[10px] text-gray-400 mt-1 block whitespace-nowrap">입금 완료 누적액</span>
+                          </div>
                           {/* 잔여 간식비 카드 */}
                           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
                             <div className="flex justify-between items-start mb-2">
@@ -1728,16 +1782,13 @@ export default function App() {
                             : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800'
                         }`}>
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <div>
-                              <span className={`text-[10px] font-bold uppercase tracking-widest block mb-1 whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-500 dark:text-emerald-500' : 'text-gray-400'}`}>최종 시재 (차액)</span>
-                              <span className="text-[10px] text-gray-400 whitespace-nowrap">보유 자산({totalAsset.toLocaleString()}) − 미정산금({unsettledAmount.toLocaleString()})</span>
-                            </div>
-                            <div className="flex items-end gap-1 sm:justify-end">
-                              {tillDifference === 0 && <CheckCircle2 size={18} className="text-emerald-500 mb-1 shrink-0" />}
-                              <span className={`font-black text-2xl tracking-tight whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-500'}`}>
+                            <span className={`text-xs font-bold uppercase tracking-widest whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-500 dark:text-emerald-500' : 'text-gray-400'}`}>최종 시재 (차액)</span>
+                            <div className="flex items-end gap-1.5 sm:justify-end">
+                              {tillDifference === 0 && <CheckCircle2 size={20} className="text-emerald-500 mb-1 shrink-0" />}
+                              <span className={`font-black text-3xl tracking-tight whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-500'}`}>
                                 {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()}
                               </span>
-                              <span className="text-sm font-semibold text-gray-400 mb-0.5">원</span>
+                              <span className="text-base font-semibold text-gray-400 mb-0.5">원</span>
                             </div>
                           </div>
                         </div>
@@ -1746,30 +1797,7 @@ export default function App() {
                   })()}
 
                   {/* 입력 카드 그리드 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-
-                    {/* 정산된 금액 */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5 flex flex-col">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                            <Coins size={15} className="text-gray-400" />정산된 금액
-                          </label>
-                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-0.5">입금 완료 누적액</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowRemittanceModal(true); }}
-                          className="group flex items-center gap-0.5 text-xs font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap p-1 -mr-1 cursor-pointer"
-                        >
-                          내역<ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-                        </button>
-                      </div>
-                      <div className="flex items-end justify-end mt-auto border-b border-gray-100 dark:border-gray-800 pb-1">
-                        <span className="font-black text-3xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{Number(settlementData.intermediate).toLocaleString()}</span>
-                        <span className="text-sm font-semibold text-gray-400 ml-1 mb-1">원</span>
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
 
                     {/* 계좌 잔액 + 현금 */}
                     {[
