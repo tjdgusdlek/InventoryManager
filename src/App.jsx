@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Minus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, Wallet, Scale, RefreshCw, TrendingUp, Download, RotateCcw, CheckCircle2, XCircle, Info, ChevronRight, Camera } from 'lucide-react';
+import { Plus, Minus, Calendar, Package, Archive, PieChart, Trash2, Carrot, Box, Maximize2, X, ArrowUp, ArrowDown, ArrowUpDown, Search, Edit2, Check, ClipboardList, PenTool, Link, AlertCircle, Database, Coins, Landmark, Banknote, Clock, RefreshCw, Download, CheckCircle2, XCircle, Info, ChevronRight, Camera } from 'lucide-react';
 // --- Supabase 설정 ---
 import { createClient } from '@supabase/supabase-js';
 
@@ -285,6 +285,11 @@ export default function App() {
   const [newRemittance, setNewRemittance] = useState({ date: '', amount: 0, note: '' });
   const [editingRemitId, setEditingRemitId] = useState(null);
   const [remitEditForm, setRemitEditForm] = useState(null);
+  const [snackHistory, setSnackHistory] = useState([]);
+  const [showSnackModal, setShowSnackModal] = useState(false);
+  const [newSnackEntry, setNewSnackEntry] = useState({ date: '', amount: 0, note: '' });
+  const [editingSnackId, setEditingSnackId] = useState(null);
+  const [snackEditForm, setSnackEditForm] = useState(null);
 
   // --- 판매 내역 등록 모드 상태 (수동 vs 엑셀) ---
   const [salesAddMode, setSalesAddMode] = useState('manual');
@@ -354,6 +359,11 @@ export default function App() {
           setRemittanceHistory(remitData);
       }
 
+      try {
+        const { data: snackData } = await supabaseClient.from('snack_history').select('*').order('date', { ascending: false });
+        if (snackData) setSnackHistory(snackData);
+      } catch(e) { console.warn("snack_history 테이블 없음"); }
+
     } catch (error) {
       console.error("DB Fetch Error:", error);
       showToast("데이터를 불러오는데 실패했습니다.", "error");
@@ -412,10 +422,11 @@ export default function App() {
   const today = getLocalToday();
 
   useEffect(() => {
+      if(showSnackModal && !newSnackEntry.date) setNewSnackEntry(prev => ({ ...prev, date: today }));
       if(showRemittanceModal && !newRemittance.date) {
           setNewRemittance(prev => ({...prev, date: today}));
       }
-  }, [showRemittanceModal, today]);
+  }, [showRemittanceModal, showSnackModal, today]);
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -847,6 +858,54 @@ export default function App() {
       showToast("수정되었습니다.", "success");
   };
 
+  const handleAddSnack = async (e) => {
+    e.preventDefault();
+    if (!newSnackEntry.amount || newSnackEntry.amount <= 0) return showToast("정상적인 금액을 입력해주세요.", "error");
+    const newItem = { id: Date.now() + Math.floor(Math.random() * 10000), date: newSnackEntry.date, amount: Number(newSnackEntry.amount), note: newSnackEntry.note };
+    const updatedSnackUsed = (settlementData.snackUsed || 0) + newItem.amount;
+    if (supabaseClient) {
+      try { await supabaseClient.from('snack_history').insert([newItem]); } catch(e) { console.warn("snack_history 테이블 없음"); }
+      await supabaseClient.from('settlement').upsert([{ id: 1, intermediate: settlementData.intermediate, account: settlementData.account, cash: settlementData.cash, snackUsed: updatedSnackUsed }]);
+    }
+    setSnackHistory([newItem, ...snackHistory].sort((a,b) => new Date(b.date) - new Date(a.date)));
+    setSettlementData(prev => ({ ...prev, snackUsed: updatedSnackUsed }));
+    setNewSnackEntry({ date: today, amount: 0, note: '' });
+    showToast("간식비 내역이 추가되었습니다.", "success");
+  };
+
+  const handleDeleteSnack = async (id, amount) => {
+    setConfirmDialog({ isOpen: true, message: "이 간식비 내역을 삭제하시겠습니까?", onConfirm: async () => {
+      const updatedSnackUsed = Math.max(0, (settlementData.snackUsed || 0) - amount);
+      if (supabaseClient) {
+        try { await supabaseClient.from('snack_history').delete().eq('id', id); } catch(e) {}
+        await supabaseClient.from('settlement').upsert([{ id: 1, intermediate: settlementData.intermediate, account: settlementData.account, cash: settlementData.cash, snackUsed: updatedSnackUsed }]);
+      }
+      setSnackHistory(prev => prev.filter(r => r.id !== id));
+      setSettlementData(prev => ({ ...prev, snackUsed: updatedSnackUsed }));
+      showToast("삭제되었습니다.", "info");
+      setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+    }});
+  };
+
+  const startSnackEdit = (item) => { setEditingSnackId(item.id); setSnackEditForm({ ...item }); };
+  const cancelSnackEdit = () => { setEditingSnackId(null); setSnackEditForm(null); };
+
+  const saveSnackEdit = async () => {
+    if (!snackEditForm.amount || snackEditForm.amount <= 0) return showToast("정상적인 금액을 입력해주세요.", "error");
+    const oldItem = snackHistory.find(r => r.id === editingSnackId);
+    const diff = Number(snackEditForm.amount) - oldItem.amount;
+    const updatedSnackUsed = (settlementData.snackUsed || 0) + diff;
+    const updatedEntry = { ...snackEditForm, amount: Number(snackEditForm.amount) };
+    if (supabaseClient) {
+      try { await supabaseClient.from('snack_history').update({ date: updatedEntry.date, amount: updatedEntry.amount, note: updatedEntry.note }).eq('id', updatedEntry.id); } catch(e) {}
+      await supabaseClient.from('settlement').upsert([{ id: 1, intermediate: settlementData.intermediate, account: settlementData.account, cash: settlementData.cash, snackUsed: updatedSnackUsed }]);
+    }
+    setSnackHistory(snackHistory.map(r => r.id === editingSnackId ? updatedEntry : r).sort((a,b) => new Date(b.date) - new Date(a.date)));
+    setSettlementData(prev => ({ ...prev, snackUsed: updatedSnackUsed }));
+    cancelSnackEdit();
+    showToast("수정되었습니다.", "success");
+  };
+
   const applyPendingData = async () => {
     for (const item of pendingRawData) {
       if (!item.mapTo.product || !item.mapTo.option) return showToast(`[${item.rawId}] 항목의 매칭을 완료해주세요.`, "error");
@@ -1098,7 +1157,7 @@ export default function App() {
   const [showRawDataInput, setShowRawDataInput] = useState(false); 
 
   useEffect(() => {
-    if (maximizedView || showRemittanceModal) {
+    if (maximizedView || showRemittanceModal || showSnackModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -1106,7 +1165,7 @@ export default function App() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [maximizedView, showRemittanceModal]);
+  }, [maximizedView, showRemittanceModal, showSnackModal]);
 
   const handleCloseModal = () => {
     setMaximizedView(null); 
@@ -1614,7 +1673,7 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* 요약 스트립 */}
+                  {/* 요약 스트립 + 최종 시재 */}
                   {(() => {
                     const remitted = Number(settlementData.intermediate) || 0;
                     const inAccount = Number(settlementData.account) || 0;
@@ -1623,39 +1682,66 @@ export default function App() {
                     const unsettledAmount = totalSales - remitted;
                     const totalAsset = inAccount + inCash;
                     const tillDifference = totalAsset - unsettledAmount;
+                    const snackBudget = Math.floor((remitted * 0.05) / 100) * 100;
+                    const snackUsed = Number(settlementData.snackUsed) || 0;
+                    const snackRemaining = snackBudget - snackUsed;
                     return (
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-                        {[
-                          { label: '누적 판매', value: totalSales, sub: '전체 판매 합계' },
-                          { label: '총 정산금', value: remitted, sub: '입금 완료 누적액' },
-                          { label: '미정산금', value: unsettledAmount, sub: '보관 중인 판매대금' },
-                        ].map((stat) => (
-                          <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 whitespace-nowrap">{stat.label}</span>
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                          {[
+                            { label: '누적 판매', value: totalSales, sub: '전체 판매 합계' },
+                            { label: '총 정산금', value: remitted, sub: '입금 완료 누적액' },
+                            { label: '미정산금', value: unsettledAmount, sub: '보관 중인 판매대금' },
+                          ].map((stat) => (
+                            <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 whitespace-nowrap">{stat.label}</span>
+                              <div className="flex items-end gap-1">
+                                <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{stat.value.toLocaleString()}</span>
+                                <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                              </div>
+                              <span className="text-[10px] text-gray-400 mt-1 block whitespace-nowrap">{stat.sub}</span>
+                            </div>
+                          ))}
+                          {/* 잔여 간식비 카드 */}
+                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">잔여 간식비</span>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSnackModal(true); }}
+                                className="group flex items-center gap-0.5 text-[10px] font-bold text-gray-400 hover:text-orange-500 transition-colors whitespace-nowrap cursor-pointer -mt-0.5"
+                              >
+                                내역<ChevronRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
+                              </button>
+                            </div>
                             <div className="flex items-end gap-1">
-                              <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{stat.value.toLocaleString()}</span>
+                              <span className={`font-black text-lg tracking-tight whitespace-nowrap ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
                               <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
                             </div>
-                            <span className="text-[10px] text-gray-400 mt-1 block whitespace-nowrap">{stat.sub}</span>
+                            <span className="text-[10px] text-gray-400 mt-1 block">예산 {snackBudget.toLocaleString()}원 중 {snackUsed.toLocaleString()}원 사용</span>
                           </div>
-                        ))}
-                        <div className={`col-span-2 lg:col-span-1 rounded-2xl p-4 border transition-colors ${
+                        </div>
+                        {/* 최종 시재 - 전체 너비 */}
+                        <div className={`rounded-2xl p-4 border mb-6 transition-colors ${
                           tillDifference === 0
                             ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50'
                             : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800'
                         }`}>
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 whitespace-nowrap">최종 시재</span>
-                          <div className="flex items-end gap-1">
-                            <span className={`font-black text-lg tracking-tight whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-500'}`}>
-                              {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()}
-                            </span>
-                            <span className="text-xs font-semibold text-gray-400 mb-0.5">원</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                              <span className={`text-[10px] font-bold uppercase tracking-widest block mb-1 whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-500 dark:text-emerald-500' : 'text-gray-400'}`}>최종 시재 (차액)</span>
+                              <span className="text-[10px] text-gray-400 whitespace-nowrap">보유 자산({totalAsset.toLocaleString()}) − 미정산금({unsettledAmount.toLocaleString()})</span>
+                            </div>
+                            <div className="flex items-end gap-1 sm:justify-end">
+                              {tillDifference === 0 && <CheckCircle2 size={18} className="text-emerald-500 mb-1 shrink-0" />}
+                              <span className={`font-black text-2xl tracking-tight whitespace-nowrap ${tillDifference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-500'}`}>
+                                {tillDifference > 0 ? '+' : ''}{tillDifference.toLocaleString()}
+                              </span>
+                              <span className="text-sm font-semibold text-gray-400 mb-0.5">원</span>
+                            </div>
                           </div>
-                          <span className="text-[10px] text-gray-400 mt-1 block whitespace-nowrap">
-                            {tillDifference === 0 ? '✓ 정산이 맞습니다' : '보유자산 − 미정산금'}
-                          </span>
                         </div>
-                      </div>
+                      </>
                     );
                   })()}
 
@@ -1752,93 +1838,6 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* 간식비 카드 */}
-                  {(() => {
-                    const snackBudget = Math.floor((Number(settlementData.intermediate) * 0.05) / 100) * 100;
-                    const snackUsed = Number(settlementData.snackUsed) || 0;
-                    const snackRemaining = snackBudget - snackUsed;
-                    const snackPercent = snackBudget > 0 ? Math.min(100, Math.round((snackUsed / snackBudget) * 100)) : 0;
-                    return (
-                      <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5 lg:p-6">
-                        <div className="flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-8">
-                          <div className="lg:w-52 shrink-0">
-                            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                              <Wallet size={16} className="text-gray-400" />간식비 관리
-                            </label>
-                            <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-1">정산금의 5% (100원 내림)</span>
-                            <div className="mt-3 flex items-end gap-1">
-                              <span className="font-black text-2xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">{snackBudget.toLocaleString()}</span>
-                              <span className="text-sm font-semibold text-gray-400 mb-0.5">원</span>
-                            </div>
-                          </div>
-                          <div className="hidden lg:block w-px bg-gray-100 dark:bg-gray-800 self-stretch" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-stretch gap-3 mb-3 min-w-0">
-                              <div className="flex-1 min-w-0 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 overflow-hidden">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">사용</span>
-                                <div className="flex items-end gap-0.5 min-w-0">
-                                  <span className="font-black text-lg text-orange-500 truncate">{snackUsed.toLocaleString()}</span>
-                                  <span className="text-xs font-semibold text-gray-400 mb-0.5 shrink-0">원</span>
-                                </div>
-                              </div>
-                              <div className="flex-1 min-w-0 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 overflow-hidden">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">잔여</span>
-                                <div className="flex items-end gap-0.5 min-w-0">
-                                  <span className={`font-black text-lg truncate ${snackRemaining <= 0 ? 'text-orange-500' : 'text-emerald-500 dark:text-emerald-400'}`}>{snackRemaining.toLocaleString()}</span>
-                                  <span className="text-xs font-semibold text-gray-400 mb-0.5 shrink-0">원</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-500 ${snackPercent >= 100 ? 'bg-orange-400' : 'bg-emerald-400'}`} style={{ width: `${snackPercent}%` }} />
-                            </div>
-                          </div>
-                          <div className="hidden lg:block w-px bg-gray-100 dark:bg-gray-800 self-stretch" />
-                          <div className="lg:w-44 shrink-0">
-                            <span className="text-[11px] text-gray-500 dark:text-gray-400 block mb-2 whitespace-nowrap">사용 금액 조정</span>
-                            <div className="flex items-center gap-1.5">
-                              <FormattedNumberInput
-                                value={adjustAmounts.snack}
-                                onChange={(e) => {
-                                  const rawValue = e.target.value.replace(/[^0-9]/g, '');
-                                  setAdjustAmounts(prev => ({ ...prev, snack: rawValue }));
-                                }}
-                                className="flex-1 min-w-0 text-right text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 text-gray-700 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-600"
-                                placeholder="금액"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const amt = Number(adjustAmounts.snack) || 0;
-                                  if (!amt) return;
-                                  const next = (settlementData.snackUsed || 0) + amt;
-                                  const newData = { ...settlementData, snackUsed: next };
-                                  setSettlementData(newData);
-                                  setAdjustAmounts(prev => ({ ...prev, snack: '' }));
-                                  handleSaveSettlement(true, newData);
-                                }}
-                                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-500 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 dark:hover:text-emerald-400 font-bold text-sm transition-colors"
-                              >+</button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const amt = Number(adjustAmounts.snack) || 0;
-                                  if (!amt) return;
-                                  const next = Math.max(0, (settlementData.snackUsed || 0) - amt);
-                                  const newData = { ...settlementData, snackUsed: next };
-                                  setSettlementData(newData);
-                                  setAdjustAmounts(prev => ({ ...prev, snack: '' }));
-                                  handleSaveSettlement(true, newData);
-                                }}
-                                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-500 dark:hover:bg-orange-900/20 dark:hover:border-orange-700 dark:hover:text-orange-400 font-bold text-sm transition-colors"
-                              >−</button>
-                              <span className="text-xs text-gray-400 shrink-0">원</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </div>
               )}
             </div>
@@ -2643,6 +2642,110 @@ export default function App() {
             <div className="px-5 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 flex justify-between items-center shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
                <span className="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400">총 누적 송금액</span>
                <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{Number(settlementData.intermediate).toLocaleString()}<span className="text-sm font-bold ml-1 text-gray-500">원</span></span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- 간식비 내역 모달 --- */}
+      {showSnackModal && (
+        <div className="fixed inset-0 bg-gray-900/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 transition-colors">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-xl flex flex-col overflow-hidden border-2 border-gray-200 dark:border-gray-700 dark:[color-scheme:dark]">
+            <div className="px-5 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Coins size={20} className="text-orange-500" />
+                <h2 className="text-lg font-black text-gray-900 dark:text-white">간식비 내역 관리</h2>
+              </div>
+              <button onClick={() => { setShowSnackModal(false); cancelSnackEdit(); }} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><X size={22} /></button>
+            </div>
+            <div className="p-5 sm:p-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+              <form onSubmit={handleAddSnack} className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">사용일</label>
+                    <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 shadow-sm h-10">
+                      <CustomDatePicker startDate={newSnackEntry.date} onChange={(d) => setNewSnackEntry({...newSnackEntry, date: d})} className="w-full px-3 text-sm font-bold text-gray-900 dark:text-white bg-transparent outline-none" wrapperClassName="w-full" isRangeMode={false} />
+                    </div>
+                  </div>
+                  <div className="col-span-1 sm:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">금액 (원)</label>
+                    <div className="flex items-center w-full border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden transition-colors shadow-sm focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 h-10">
+                      <FormattedNumberInput value={newSnackEntry.amount} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setNewSnackEntry({...newSnackEntry, amount: Number(v)})}} className="flex-1 w-full px-3 text-sm font-black bg-transparent text-gray-900 dark:text-white outline-none text-right" placeholder="0" required={true}/>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">비고 (선택)</label>
+                  <div className="flex gap-2 sm:gap-3 h-10">
+                    <input type="text" value={newSnackEntry.note} onChange={e => setNewSnackEntry({...newSnackEntry, note: e.target.value})} className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg px-3 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-1 focus:ring-orange-500 transition-colors shadow-sm" placeholder="예: 편의점 간식" />
+                    <button type="submit" className="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white font-bold px-5 sm:px-6 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-sm h-full">내역 추가</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div className="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-gray-900 p-0 max-h-[40vh] sm:max-h-[45vh] relative">
+              <table className="w-full text-sm text-left table-fixed">
+                <thead className="bg-gray-50/90 dark:bg-gray-800/80 sticky top-0 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm z-10">
+                  <tr>
+                    <th className="px-4 sm:px-6 py-3 font-semibold w-[35%] sm:w-[25%] whitespace-nowrap">사용일</th>
+                    <th className="px-2 py-3 font-semibold text-right w-[40%] sm:w-[25%] truncate">금액</th>
+                    <th className="px-4 sm:px-6 py-3 font-semibold hidden sm:table-cell w-[35%] truncate">비고</th>
+                    <th className="px-2 sm:px-3 py-3 text-center w-[25%] sm:w-[15%] truncate">관리</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+                  {snackHistory.length === 0 ? (
+                    <tr><td colSpan="4" className="text-center text-gray-400 dark:text-gray-500 py-16 font-medium text-sm">저장된 간식비 내역이 없습니다.</td></tr>
+                  ) : (
+                    snackHistory.map(item => {
+                      if (editingSnackId === item.id) {
+                        return (
+                          <tr key={item.id} className="bg-orange-50/50 dark:bg-orange-900/10">
+                            <td className="px-2 sm:px-4 py-2 align-top">
+                              <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 pr-1 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
+                                <CustomDatePicker startDate={snackEditForm.date} onChange={(d) => setSnackEditForm({...snackEditForm, date: d})} className="w-full pl-2 py-1.5 text-xs bg-transparent outline-none font-bold text-gray-900 dark:text-white" wrapperClassName="w-full" isRangeMode={false} />
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 align-top">
+                              <FormattedNumberInput value={snackEditForm.amount} onChange={e => { const val = e.target.value.replace(/[^0-9]/g, ''); setSnackEditForm({...snackEditForm, amount: Number(val)}); }} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-1.5 text-right text-xs sm:text-sm font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="0" />
+                            </td>
+                            <td className="px-2 sm:px-4 py-2 hidden sm:table-cell align-top">
+                              <input type="text" value={snackEditForm.note} onChange={e => setSnackEditForm({...snackEditForm, note: e.target.value})} className="w-full h-8 border border-gray-300 dark:border-gray-600 rounded-md px-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-orange-500 outline-none" placeholder="비고" />
+                            </td>
+                            <td className="px-1 py-2 text-center align-top pt-3">
+                              <div className="flex justify-center items-center gap-1 sm:gap-1.5">
+                                <button type="button" onClick={() => saveSnackEdit()} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 sm:p-1.5 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 transition-colors"><Check size={14}/></button>
+                                <button type="button" onClick={() => cancelSnackEdit()} className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 sm:p-1.5 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 transition-colors"><X size={14}/></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+                      return (
+                        <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors group">
+                          <td className="px-4 sm:px-6 py-3.5">
+                            <div className="font-bold text-gray-600 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">{item.date}</div>
+                            <div className="text-[10px] text-gray-400 sm:hidden mt-0.5 truncate">{item.note || '-'}</div>
+                          </td>
+                          <td className="px-2 py-3.5 text-right font-black text-gray-900 dark:text-white truncate">{Number(item.amount).toLocaleString()}원</td>
+                          <td className="px-4 sm:px-6 py-3.5 text-xs text-gray-500 dark:text-gray-400 truncate hidden sm:table-cell" title={item.note}>{item.note || '-'}</td>
+                          <td className="px-2 sm:px-3 py-3.5 text-center whitespace-nowrap">
+                            <div className="flex justify-center items-center gap-1 sm:gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button type="button" onClick={() => startSnackEdit(item)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="수정"><Edit2 size={16} /></button>
+                              <button type="button" onClick={() => handleDeleteSnack(item.id, item.amount)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="삭제"><Trash2 size={16}/></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                  <tr className="h-full pointer-events-none"><td colSpan="4" className="p-0 border-0"></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="px-5 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 flex justify-between items-center shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+              <span className="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400">총 사용 간식비</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">{Number(settlementData.snackUsed || 0).toLocaleString()}<span className="text-sm font-bold ml-1 text-gray-500">원</span></span>
             </div>
           </div>
         </div>
